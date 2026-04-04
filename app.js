@@ -17,6 +17,7 @@ const panel = document.getElementById('panel');
 const panelHandle = document.getElementById('panel-handle');
 const chatPanel = document.getElementById('panel-chat');
 const planningPanel = document.getElementById('panel-planning');
+const miloBtnWrap = document.querySelector('.milo-btn-wrap');
 const miloBtn = document.getElementById('milo-btn');
 const textInput = document.getElementById('text-input');
 const sendBtn = document.getElementById('send-btn');
@@ -40,6 +41,14 @@ const settingsMenuTriggerEducation = document.getElementById('settings-menu-trig
 const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
 const settingsMenuClose = document.getElementById('settings-menu-close');
 const themeToggle = document.getElementById('theme-toggle');
+const profileFirstNameInput = document.getElementById('profile-first-name');
+const profileEmailInput = document.getElementById('profile-email');
+const profilePhoneInput = document.getElementById('profile-phone');
+const profileLanguageSelect = document.getElementById('profile-language');
+const profileAccountTypeSelect = document.getElementById('profile-account-type');
+const profileSaveButton = document.getElementById('profile-save-btn');
+const profileStorageKey = 'milo.profile';
+let savedProfileSnapshot = null;
 
 function toggleSettingsMenu(event) {
   if (!settingsMenu) return;
@@ -96,6 +105,16 @@ if (themeToggle) {
 // démarrer en sombre
 applyTheme(false);
 
+const initialProfileData = loadProfileData();
+applyProfileData(initialProfileData);
+savedProfileSnapshot = profileDataToSnapshot(initialProfileData);
+initializeProfileForm();
+updateProfileSaveState();
+
+if (profileSaveButton) {
+  profileSaveButton.addEventListener('click', saveProfileData);
+}
+
 function openPanel() {
   panelOpen = true;
   panel.classList.remove('dragging');
@@ -134,6 +153,7 @@ function showHome() {
   document.getElementById('home-page').style.display = 'block';
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'none';
+  if (miloBtnWrap) miloBtnWrap.style.display = 'block';
 }
 
 function showEducation() {
@@ -142,6 +162,7 @@ function showEducation() {
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'block';
   document.getElementById('personal-info-page').style.display = 'none';
+  if (miloBtnWrap) miloBtnWrap.style.display = 'block';
 }
 
 function showPersonalInfo() {
@@ -151,6 +172,85 @@ function showPersonalInfo() {
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'block';
+  if (miloBtnWrap) miloBtnWrap.style.display = 'none';
+}
+
+function getDefaultProfile() {
+  return {
+    firstName: 'Maxim',
+    email: 'maxim@example.com',
+    phone: '',
+    language: 'Français',
+    accountType: 'Personnel'
+  };
+}
+
+function loadProfileData() {
+  const defaults = getDefaultProfile();
+
+  try {
+    const rawProfile = window.localStorage.getItem(profileStorageKey);
+    if (!rawProfile) {
+      return defaults;
+    }
+
+    return { ...defaults, ...JSON.parse(rawProfile) };
+  } catch {
+    return defaults;
+  }
+}
+
+function applyProfileData(profile) {
+  if (profileFirstNameInput) profileFirstNameInput.value = profile.firstName || '';
+  if (profileEmailInput) profileEmailInput.value = profile.email || '';
+  if (profilePhoneInput) profilePhoneInput.value = profile.phone || '';
+  if (profileLanguageSelect) profileLanguageSelect.value = profile.language || 'Français';
+  if (profileAccountTypeSelect) profileAccountTypeSelect.value = profile.accountType || 'Personnel';
+}
+
+function collectProfileData() {
+  return {
+    firstName: profileFirstNameInput?.value.trim() || '',
+    email: profileEmailInput?.value.trim() || '',
+    phone: profilePhoneInput?.value.trim() || '',
+    language: profileLanguageSelect?.value || 'Français',
+    accountType: profileAccountTypeSelect?.value || 'Personnel'
+  };
+}
+
+function profileDataToSnapshot(profile) {
+  return JSON.stringify(profile);
+}
+
+function updateProfileSaveState() {
+  if (!profileSaveButton) return;
+
+  const currentSnapshot = profileDataToSnapshot(collectProfileData());
+  const hasChanges = currentSnapshot !== savedProfileSnapshot;
+  profileSaveButton.disabled = !hasChanges;
+}
+
+function saveProfileData() {
+  const profile = collectProfileData();
+  window.localStorage.setItem(profileStorageKey, JSON.stringify(profile));
+  savedProfileSnapshot = profileDataToSnapshot(profile);
+  updateProfileSaveState();
+  showToast('Profil enregistré');
+}
+
+function initializeProfileForm() {
+  const profileFields = [
+    profileFirstNameInput,
+    profileEmailInput,
+    profilePhoneInput,
+    profileLanguageSelect,
+    profileAccountTypeSelect
+  ].filter(Boolean);
+
+  profileFields.forEach(field => {
+    field.addEventListener('input', updateProfileSaveState);
+    field.addEventListener('change', updateProfileSaveState);
+  });
 }
 
 function openPanelSection(section) {
