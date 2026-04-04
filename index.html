@@ -1119,41 +1119,41 @@
   </div>
 
   <div class="scroll-area">
-    <div class="section-label">Aujourd'hui</div>
+    <div class="section-label" id="home-today-label">Aujourd'hui</div>
     <div class="card" style="animation-delay:0.05s">
       <div class="card-dot" style="background:var(--accent)"></div>
       <div class="card-body">
-        <div class="card-title">Révision — Maths</div>
-        <div class="card-sub">14h00 · 45 min</div>
-        <span class="badge badge-purple">Planifié par Milo</span>
+        <div class="card-title" id="home-card-1-title">Révision — Maths</div>
+        <div class="card-sub" id="home-card-1-sub">14h00 · 45 min</div>
+        <span class="badge badge-purple" id="home-card-1-badge">Planifié par Milo</span>
       </div>
     </div>
 
     <div class="card" style="animation-delay:0.1s">
       <div class="card-dot" style="background:var(--amber)"></div>
       <div class="card-body">
-        <div class="card-title">Courses à faire</div>
-        <div class="card-sub">Lait, pain, tomates…</div>
-        <span class="badge badge-amber">Rappel 18h00</span>
+        <div class="card-title" id="home-card-2-title">Courses à faire</div>
+        <div class="card-sub" id="home-card-2-sub">Lait, pain, tomates…</div>
+        <span class="badge badge-amber" id="home-card-2-badge">Rappel 18h00</span>
       </div>
     </div>
 
-    <div class="section-label">Demain</div>
+    <div class="section-label" id="home-tomorrow-label">Demain</div>
     <div class="card" style="animation-delay:0.15s">
       <div class="card-dot" style="background:var(--teal)"></div>
       <div class="card-body">
-        <div class="card-title">Sport — Running</div>
-        <div class="card-sub">07h30 · 30 min</div>
-        <span class="badge badge-teal">Objectif semaine</span>
+        <div class="card-title" id="home-card-3-title">Sport — Running</div>
+        <div class="card-sub" id="home-card-3-sub">07h30 · 30 min</div>
+        <span class="badge badge-teal" id="home-card-3-badge">Objectif semaine</span>
       </div>
     </div>
 
     <div class="card" style="animation-delay:0.2s">
       <div class="card-dot" style="background:var(--accent)"></div>
       <div class="card-body">
-        <div class="card-title">Révision — Histoire</div>
-        <div class="card-sub">19h00 · 1h</div>
-        <span class="badge badge-purple">Planifié par Milo</span>
+        <div class="card-title" id="home-card-4-title">Révision — Histoire</div>
+        <div class="card-sub" id="home-card-4-sub">19h00 · 1h</div>
+        <span class="badge badge-purple" id="home-card-4-badge">Planifié par Milo</span>
       </div>
     </div>
   </div>
@@ -1175,15 +1175,10 @@
   </div>
 
   <div class="header">
-    <div class="app-name">Photo profil</div>
+    <div class="app-name" id="progress-page-title">Progress</div>
   </div>
 
-  <div class="dev-page-content">
-    <div class="dev-card">
-      <div class="dev-card-title">En cours de dev</div>
-      <div class="dev-card-copy">Cette page entière est prête à accueillir la gestion complète de la photo de profil. Pour l’instant, l’import de photo se fait depuis le menu Profil.</div>
-    </div>
-  </div>
+  <div class="dev-page-content"></div>
   </div>
 
   <!-- PAGE: Infos personnelles -->
@@ -1202,37 +1197,37 @@
   </div>
 
   <div class="header">
-    <div class="app-name">Profil</div>
+    <div class="app-name" id="profile-page-title">Profil</div>
   </div>
 
   <div class="scroll-area profile-page-content">
     <div class="profile-hero">
-      <div class="profile-hero-title">Ton espace personnel</div>
-      <div class="profile-hero-subtitle">Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.</div>
+      <div class="profile-hero-title" id="profile-hero-title">Ton espace personnel</div>
+      <div class="profile-hero-subtitle" id="profile-hero-subtitle">Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.</div>
     </div>
 
-    <div class="section-label">Profil</div>
+    <div class="section-label" id="profile-section-label">Profil</div>
     <div class="profile-field">
-      <div class="profile-field-label">Prénom</div>
+      <div class="profile-field-label" id="profile-first-name-label">Prénom</div>
       <input class="profile-field-input" id="profile-first-name" value="Maxim" placeholder="Prénom" />
     </div>
     <div class="profile-field">
-      <div class="profile-field-label">Email</div>
+      <div class="profile-field-label" id="profile-email-label">Email</div>
       <input class="profile-field-input" id="profile-email" value="maxim@example.com" placeholder="Email" />
     </div>
     <div class="profile-field">
-      <div class="profile-field-label">Téléphone</div>
+      <div class="profile-field-label" id="profile-phone-label">Téléphone</div>
       <input class="profile-field-input" id="profile-phone" value="" placeholder="Téléphone" />
     </div>
     <div class="profile-field">
-      <div class="profile-field-label">Photo de profil</div>
+      <div class="profile-field-label" id="profile-photo-label">Photo de profil</div>
       <div class="profile-photo-row">
         <div class="profile-photo-preview">
           <img class="avatar-image profile-avatar-image" id="profile-photo-preview" alt="Aperçu photo de profil" />
         </div>
         <div class="profile-photo-meta">
-          <div class="profile-photo-name">Photo actuelle</div>
-          <div class="profile-photo-help">JPEG ou PNG uniquement</div>
+          <div class="profile-photo-name" id="profile-photo-name">Photo actuelle</div>
+          <div class="profile-photo-help" id="profile-photo-help">JPEG ou PNG uniquement</div>
         </div>
         <div class="profile-photo-actions">
           <button class="profile-photo-button" id="profile-photo-button" type="button">Importer</button>
@@ -1242,21 +1237,20 @@
       </div>
     </div>
 
-    <div class="section-label">Préférences</div>
+    <div class="section-label" id="profile-preferences-label">Préférences</div>
     <div class="profile-field">
-      <div class="profile-field-label">Langue</div>
+      <div class="profile-field-label" id="profile-language-label">Langue</div>
       <select class="profile-field-select" id="profile-language">
-        <option value="Français">Français</option>
-        <option value="English">English</option>
-        <option value="Español">Español</option>
+        <option value="Français" id="profile-language-option-fr">Français</option>
+        <option value="English" id="profile-language-option-en">English</option>
       </select>
     </div>
     <div class="profile-field">
-      <div class="profile-field-label">Compte</div>
+      <div class="profile-field-label" id="profile-account-label">Compte</div>
       <select class="profile-field-select" id="profile-account-type">
-        <option value="Personnel">Personnel</option>
-        <option value="Étudiant">Étudiant</option>
-        <option value="Professionnel">Professionnel</option>
+        <option value="Personnel" id="profile-account-option-personal">Personnel</option>
+        <option value="Étudiant" id="profile-account-option-student">Étudiant</option>
+        <option value="Professionnel" id="profile-account-option-professional">Professionnel</option>
       </select>
     </div>
 
@@ -1287,7 +1281,7 @@
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <path d="M2 8.5L10 2l8 6.5V18a1 1 0 01-1 1H3a1 1 0 01-1-1V8.5z"/>
       </svg>
-      <span>Accueil</span>
+      <span id="nav-home-label">Accueil</span>
     </div>
 
     <div class="nav-item" onclick="openPanelSection('planning')">
@@ -1297,7 +1291,7 @@
         <line x1="7" y1="1" x2="7" y2="5"/>
         <line x1="13" y1="1" x2="13" y2="5"/>
       </svg>
-      <span>Planning</span>
+      <span id="nav-planning-label">Planning</span>
     </div>
 
     <div class="nav-spacer"></div>
@@ -1308,15 +1302,16 @@
         <path d="M8 8h4"/>
         <path d="M8 12h4"/>
       </svg>
-      <span>Éducation</span>
+      <span id="nav-education-label">Éducation</span>
     </div>
 
-    <div class="nav-item" onclick="showPersonalInfo()">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-        <circle cx="10" cy="7" r="3"/>
-        <path d="M3 18c0-3.9 3.1-7 7-7s7 3.1 7 7"/>
+    <div class="nav-item" onclick="showAvatarDevPage()">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="6.5"/>
+        <circle cx="10" cy="10" r="3.25"/>
+        <circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/>
       </svg>
-      <span>Profil</span>
+      <span id="nav-progress-label">Progress</span>
     </div>
   </div>
 
@@ -1336,7 +1331,7 @@
   </div>
 
   <div class="header">
-    <div class="app-name">Éducation</div>
+    <div class="app-name" id="education-page-title">Éducation</div>
   </div>
 
   <div class="scroll-area education-content">
@@ -1345,12 +1340,12 @@
       <button class="sidebar-btn" onclick="openPanelSection('documents')">Documents</button>
     </div>
     <div class="main-content">
-      <div class="section-label">Bienvenue dans Éducation</div>
+      <div class="section-label" id="education-welcome-label">Bienvenue dans Éducation</div>
       <div class="card">
         <div class="card-dot" style="background:var(--teal)"></div>
         <div class="card-body">
-          <div class="card-title">Utilisez la barre latérale pour accéder aux fonctionnalités</div>
-          <div class="card-sub">Chat IA pour poser des questions sur vos documents</div>
+          <div class="card-title" id="education-card-title">Utilisez la barre latérale pour accéder aux fonctionnalités</div>
+          <div class="card-sub" id="education-card-sub">Chat IA pour poser des questions sur vos documents</div>
         </div>
       </div>
     </div>
@@ -1361,16 +1356,14 @@
   <div class="settings-menu" id="settings-menu">
     <button class="settings-menu-close" id="settings-menu-close">×</button>
     
-    <div class="settings-menu-title">Paramètres</div>
+    <div class="settings-menu-title" id="settings-menu-title">Paramètres</div>
 
     <div class="theme-toggle">
-      <span>Thème</span>
+      <span id="theme-label">Thème</span>
       <div class="toggle-switch" id="theme-toggle"></div>
     </div>
 
-    <button class="settings-menu-item">Info personnelles</button>
-    <button class="settings-menu-item">Langue</button>
-    <button class="settings-menu-item">Préférences</button>
+    <button class="settings-menu-item" id="settings-preferences-item">Préférences</button>
   </div>
 
   <!-- Panel -->
@@ -1384,7 +1377,7 @@
     <!-- Chat section -->
     <div id="panel-chat" class="panel-section" style="display: none;">
       <div class="chat-history" id="chat-history">
-        <div class="chat-empty">Aucun échange pour le moment</div>
+        <div class="chat-empty" id="chat-empty-initial">Aucun échange pour le moment</div>
       </div>
       <div class="panel-state-label" id="panel-label">Écris un message ou parle à Milo</div>
       <div class="input-row">
@@ -1414,11 +1407,11 @@
         <div class="day-agenda" id="day-agenda-panel"></div>
         <div class="task-editor hidden" id="task-editor-panel">
           <div class="task-editor-field">
-            <div class="task-editor-label">Titre</div>
+            <div class="task-editor-label" id="task-title-label">Titre</div>
             <input class="task-editor-input" id="task-title-input" placeholder="Titre de la tâche" />
           </div>
           <div class="task-editor-field">
-            <div class="task-editor-label">Description</div>
+            <div class="task-editor-label" id="task-description-label">Description</div>
             <textarea class="task-editor-textarea" id="task-description-input" placeholder="Ajouter une description"></textarea>
           </div>
         </div>
@@ -1426,13 +1419,13 @@
       </div>
       <div id="planning-month-view-panel" style="display: none;">
         <div class="month-weekdays">
-          <div>Lun</div>
-          <div>Mar</div>
-          <div>Mer</div>
-          <div>Jeu</div>
-          <div>Ven</div>
-          <div>Sam</div>
-          <div>Dim</div>
+          <div id="weekday-1">Lun</div>
+          <div id="weekday-2">Mar</div>
+          <div id="weekday-3">Mer</div>
+          <div id="weekday-4">Jeu</div>
+          <div id="weekday-5">Ven</div>
+          <div id="weekday-6">Sam</div>
+          <div id="weekday-7">Dim</div>
         </div>
         <div class="month-grid" id="month-grid-panel"></div>
       </div>
@@ -1446,7 +1439,7 @@
       </div>
       <div id="documents-list">
         <div style="color: var(--text3); text-align: center; padding: 40px 20px;">
-          Aucun document ou dossier
+          <span id="documents-empty-text">Aucun document ou dossier</span>
         </div>
       </div>
     </div>
@@ -1454,7 +1447,7 @@
     <!-- Settings section -->
     <div id="panel-settings" class="panel-section" style="display: none;">
       <div style="color: var(--text2); text-align: center; padding: 40px 20px;">
-        Paramètres en développement
+        <span id="settings-dev-text">Paramètres en développement</span>
       </div>
     </div>
   </div>

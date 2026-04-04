@@ -56,6 +56,313 @@ const profileSaveButton = document.getElementById('profile-save-btn');
 const profileStorageKey = 'milo.profile';
 let savedProfileSnapshot = null;
 let currentProfilePhotoData = '';
+let currentLanguage = 'fr';
+
+const translations = {
+  fr: {
+    navHome: 'Accueil',
+    navPlanning: 'Planning',
+    navEducation: 'Éducation',
+    navProgress: 'Progress',
+    homeToday: 'Aujourd\'hui',
+    homeTomorrow: 'Demain',
+    homeCard1Title: 'Révision — Maths',
+    homeCard1Sub: '14h00 · 45 min',
+    homeCard1Badge: 'Planifié par Milo',
+    homeCard2Title: 'Courses à faire',
+    homeCard2Sub: 'Lait, pain, tomates…',
+    homeCard2Badge: 'Rappel 18h00',
+    homeCard3Title: 'Sport — Running',
+    homeCard3Sub: '07h30 · 30 min',
+    homeCard3Badge: 'Objectif semaine',
+    homeCard4Title: 'Révision — Histoire',
+    homeCard4Sub: '19h00 · 1h',
+    homeCard4Badge: 'Planifié par Milo',
+    progressTitle: 'Progress',
+    profileTitle: 'Profil',
+    profileHeroTitle: 'Ton espace personnel',
+    profileHeroSubtitle: 'Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.',
+    profileSection: 'Profil',
+    profileFirstName: 'Prénom',
+    profileEmail: 'Email',
+    profilePhone: 'Téléphone',
+    profilePhoto: 'Photo de profil',
+    profilePhotoName: 'Photo actuelle',
+    profilePhotoHelp: 'JPEG ou PNG uniquement',
+    profileImport: 'Importer',
+    profileRemove: 'Retirer',
+    profilePreferences: 'Préférences',
+    profileLanguage: 'Langue',
+    profileAccount: 'Compte',
+    languageOptionFr: 'Français',
+    languageOptionEn: 'English',
+    languageOptionEs: 'Español',
+    accountPersonal: 'Personnel',
+    accountStudent: 'Étudiant',
+    accountProfessional: 'Professionnel',
+    profileSave: 'Enregistrer',
+    educationTitle: 'Éducation',
+    educationWelcome: 'Bienvenue dans Éducation',
+    educationCardTitle: 'Utilisez la barre latérale pour accéder aux fonctionnalités',
+    educationCardSub: 'Chat IA pour poser des questions sur vos documents',
+    settingsTitle: 'Paramètres',
+    settingsTheme: 'Thème',
+    settingsPreferences: 'Préférences',
+    chatEmpty: 'Aucun échange pour le moment',
+    chatIdle: 'Écris un message ou parle à Milo',
+    chatListening: 'J\'écoute…',
+    chatThinking: 'Milo réfléchit…',
+    chatPlaceholder: 'Écris à Milo…',
+    planningDay: 'Jour',
+    planningMonth: 'Mois',
+    planningNewTask: '+ Nouvelle tâche',
+    taskTitle: 'Titre',
+    taskDescription: 'Description',
+    taskTitlePlaceholder: 'Titre de la tâche',
+    taskDescriptionPlaceholder: 'Ajouter une description',
+    taskPlaceholder: 'Touchez une tâche pour modifier son titre et sa description.',
+    weekday1: 'Lun', weekday2: 'Mar', weekday3: 'Mer', weekday4: 'Jeu', weekday5: 'Ven', weekday6: 'Sam', weekday7: 'Dim',
+    createFolder: 'Créer dossier',
+    uploadDocument: 'Télécharger document',
+    documentsEmpty: 'Aucun document ou dossier',
+    settingsDev: 'Paramètres en développement',
+    avatarAlt: 'Photo de profil',
+    avatarPreviewAlt: 'Aperçu photo de profil',
+    panelChat: 'Milo',
+    panelPlanning: 'Planning',
+    panelDocuments: 'Documents',
+    panelSettings: 'Paramètres',
+    toastLight: 'Mode clair activé',
+    toastDark: 'Mode sombre activé',
+    toastProfileSaved: 'Profil enregistré',
+    toastImportImage: 'Importe un fichier JPEG ou PNG',
+    toastSpeechUnavailable: 'La reconnaissance vocale n\'est pas disponible.',
+    chatUnknown: 'Je n\'ai pas compris.',
+    errorServerPrefix: 'Erreur serveur : ',
+    reminderDefaultTitle: 'Rappel',
+    reminderConfirm: 'Très bien, je vais ajouter un rappel à {time} pour : {title}',
+    voiceAddedMeta: 'Ajouté par commande vocale',
+    noTasksToday: 'Aucune tâche ce jour-là. Ajoute-en une pour la voir se placer dans la journée.',
+    promptTaskTitle: 'Titre de la tâche:',
+    promptTaskTime: 'Heure (HH:mm):',
+    promptTimeInvalid: 'Format invalide. Utilisez HH:mm',
+    untitledTask: 'Sans titre'
+  },
+  en: {
+    navHome: 'Home',
+    navPlanning: 'Planning',
+    navEducation: 'Education',
+    navProgress: 'Progress',
+    homeToday: 'Today',
+    homeTomorrow: 'Tomorrow',
+    homeCard1Title: 'Study session — Math',
+    homeCard1Sub: '2:00 PM · 45 min',
+    homeCard1Badge: 'Planned by Milo',
+    homeCard2Title: 'Groceries to buy',
+    homeCard2Sub: 'Milk, bread, tomatoes…',
+    homeCard2Badge: 'Reminder 6:00 PM',
+    homeCard3Title: 'Workout — Running',
+    homeCard3Sub: '7:30 AM · 30 min',
+    homeCard3Badge: 'Weekly goal',
+    homeCard4Title: 'Study session — History',
+    homeCard4Sub: '7:00 PM · 1h',
+    homeCard4Badge: 'Planned by Milo',
+    progressTitle: 'Progress',
+    profileTitle: 'Profile',
+    profileHeroTitle: 'Your personal space',
+    profileHeroSubtitle: 'Find your main profile information here in a full dedicated page, just like Education.',
+    profileSection: 'Profile',
+    profileFirstName: 'First name',
+    profileEmail: 'Email',
+    profilePhone: 'Phone',
+    profilePhoto: 'Profile photo',
+    profilePhotoName: 'Current photo',
+    profilePhotoHelp: 'JPEG or PNG only',
+    profileImport: 'Import',
+    profileRemove: 'Remove',
+    profilePreferences: 'Preferences',
+    profileLanguage: 'Language',
+    profileAccount: 'Account',
+    languageOptionFr: 'French',
+    languageOptionEn: 'English',
+    languageOptionEs: 'Spanish',
+    accountPersonal: 'Personal',
+    accountStudent: 'Student',
+    accountProfessional: 'Professional',
+    profileSave: 'Save',
+    educationTitle: 'Education',
+    educationWelcome: 'Welcome to Education',
+    educationCardTitle: 'Use the sidebar to access features',
+    educationCardSub: 'AI chat to ask questions about your documents',
+    settingsTitle: 'Settings',
+    settingsTheme: 'Theme',
+    settingsPreferences: 'Preferences',
+    chatEmpty: 'No conversation yet',
+    chatIdle: 'Type a message or speak to Milo',
+    chatListening: 'I\'m listening…',
+    chatThinking: 'Milo is thinking…',
+    chatPlaceholder: 'Write to Milo…',
+    planningDay: 'Day',
+    planningMonth: 'Month',
+    planningNewTask: '+ New task',
+    taskTitle: 'Title',
+    taskDescription: 'Description',
+    taskTitlePlaceholder: 'Task title',
+    taskDescriptionPlaceholder: 'Add a description',
+    taskPlaceholder: 'Tap a task to edit its title and description.',
+    weekday1: 'Mon', weekday2: 'Tue', weekday3: 'Wed', weekday4: 'Thu', weekday5: 'Fri', weekday6: 'Sat', weekday7: 'Sun',
+    createFolder: 'Create folder',
+    uploadDocument: 'Upload document',
+    documentsEmpty: 'No document or folder',
+    settingsDev: 'Settings under development',
+    avatarAlt: 'Profile photo',
+    avatarPreviewAlt: 'Profile photo preview',
+    panelChat: 'Milo',
+    panelPlanning: 'Planning',
+    panelDocuments: 'Documents',
+    panelSettings: 'Settings',
+    toastLight: 'Light mode enabled',
+    toastDark: 'Dark mode enabled',
+    toastProfileSaved: 'Profile saved',
+    toastImportImage: 'Import a JPEG or PNG file',
+    toastSpeechUnavailable: 'Voice recognition is not available.',
+    chatUnknown: "I didn't understand.",
+    errorServerPrefix: 'Server error: ',
+    reminderDefaultTitle: 'Reminder',
+    reminderConfirm: 'Okay, I will add a reminder at {time} for: {title}',
+    voiceAddedMeta: 'Added by voice command',
+    noTasksToday: 'No tasks for this day. Add one to place it in your schedule.',
+    promptTaskTitle: 'Task title:',
+    promptTaskTime: 'Time (HH:mm):',
+    promptTimeInvalid: 'Invalid format. Use HH:mm',
+    untitledTask: 'Untitled'
+  }
+};
+
+function normalizeAppLanguage(value) {
+  return value === 'English' ? 'en' : 'fr';
+}
+
+function getCurrentLocale() {
+  return currentLanguage === 'en' ? 'en-US' : 'fr-FR';
+}
+
+function t(key, vars = {}) {
+  const dictionary = translations[currentLanguage] || translations.fr;
+  const template = dictionary[key] ?? translations.fr[key] ?? key;
+  return template.replace(/\{(\w+)\}/g, (_, token) => vars[token] ?? '');
+}
+
+function setText(id, key) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = t(key);
+}
+
+function setPlaceholder(id, key) {
+  const element = document.getElementById(id);
+  if (element) element.placeholder = t(key);
+}
+
+function applyTranslations() {
+  document.documentElement.lang = currentLanguage === 'en' ? 'en' : 'fr';
+  setText('home-today-label', 'homeToday');
+  setText('home-tomorrow-label', 'homeTomorrow');
+  setText('home-card-1-title', 'homeCard1Title');
+  setText('home-card-1-sub', 'homeCard1Sub');
+  setText('home-card-1-badge', 'homeCard1Badge');
+  setText('home-card-2-title', 'homeCard2Title');
+  setText('home-card-2-sub', 'homeCard2Sub');
+  setText('home-card-2-badge', 'homeCard2Badge');
+  setText('home-card-3-title', 'homeCard3Title');
+  setText('home-card-3-sub', 'homeCard3Sub');
+  setText('home-card-3-badge', 'homeCard3Badge');
+  setText('home-card-4-title', 'homeCard4Title');
+  setText('home-card-4-sub', 'homeCard4Sub');
+  setText('home-card-4-badge', 'homeCard4Badge');
+  setText('progress-page-title', 'progressTitle');
+  setText('profile-page-title', 'profileTitle');
+  setText('profile-hero-title', 'profileHeroTitle');
+  setText('profile-hero-subtitle', 'profileHeroSubtitle');
+  setText('profile-section-label', 'profileSection');
+  setText('profile-first-name-label', 'profileFirstName');
+  setText('profile-email-label', 'profileEmail');
+  setText('profile-phone-label', 'profilePhone');
+  setText('profile-photo-label', 'profilePhoto');
+  setText('profile-photo-name', 'profilePhotoName');
+  setText('profile-photo-help', 'profilePhotoHelp');
+  setText('profile-photo-button', 'profileImport');
+  setText('profile-photo-remove', 'profileRemove');
+  setText('profile-preferences-label', 'profilePreferences');
+  setText('profile-language-label', 'profileLanguage');
+  setText('profile-account-label', 'profileAccount');
+  setText('profile-language-option-fr', 'languageOptionFr');
+  setText('profile-language-option-en', 'languageOptionEn');
+  setText('profile-language-option-es', 'languageOptionEs');
+  setText('profile-account-option-personal', 'accountPersonal');
+  setText('profile-account-option-student', 'accountStudent');
+  setText('profile-account-option-professional', 'accountProfessional');
+  setText('profile-save-btn', 'profileSave');
+  setText('nav-home-label', 'navHome');
+  setText('nav-planning-label', 'navPlanning');
+  setText('nav-education-label', 'navEducation');
+  setText('nav-progress-label', 'navProgress');
+  setText('education-page-title', 'educationTitle');
+  setText('education-welcome-label', 'educationWelcome');
+  setText('education-card-title', 'educationCardTitle');
+  setText('education-card-sub', 'educationCardSub');
+  setText('settings-menu-title', 'settingsTitle');
+  setText('theme-label', 'settingsTheme');
+  setText('settings-preferences-item', 'settingsPreferences');
+  setText('chat-empty-initial', 'chatEmpty');
+  setText('view-day-btn-panel', 'planningDay');
+  setText('view-month-btn-panel', 'planningMonth');
+  setText('btn-new-task', 'planningNewTask');
+  setText('task-title-label', 'taskTitle');
+  setText('task-description-label', 'taskDescription');
+  setPlaceholder('task-title-input', 'taskTitlePlaceholder');
+  setPlaceholder('task-description-input', 'taskDescriptionPlaceholder');
+  setText('task-editor-placeholder', 'taskPlaceholder');
+  setText('weekday-1', 'weekday1');
+  setText('weekday-2', 'weekday2');
+  setText('weekday-3', 'weekday3');
+  setText('weekday-4', 'weekday4');
+  setText('weekday-5', 'weekday5');
+  setText('weekday-6', 'weekday6');
+  setText('weekday-7', 'weekday7');
+  setText('create-folder-btn', 'createFolder');
+  setText('upload-doc-btn', 'uploadDocument');
+  setText('documents-empty-text', 'documentsEmpty');
+  setText('settings-dev-text', 'settingsDev');
+  setPlaceholder('text-input', 'chatPlaceholder');
+  setPlaceholder('profile-first-name', 'profileFirstName');
+  setPlaceholder('profile-phone', 'profilePhone');
+  document.querySelectorAll('.profile-avatar-image').forEach((image) => {
+    image.alt = t('avatarAlt');
+  });
+  const avatarPreview = document.getElementById('profile-photo-preview');
+  if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
+  setPanelState('idle');
+  renderChatHistory();
+  if (currentPanelSection === 'planning') renderPlanningPanel();
+  if (currentPanelSection && currentPanelSection !== 'planning') {
+    const panelTitles = {
+      chat: 'panelChat',
+      planning: 'panelPlanning',
+      documents: 'panelDocuments',
+      settings: 'panelSettings'
+    };
+    const panelTitleKey = panelTitles[currentPanelSection];
+    if (panelTitleKey) {
+      const titleEl = document.getElementById('panel-title');
+      if (titleEl) titleEl.textContent = t(panelTitleKey);
+    }
+  }
+}
+
+function applyLanguage(languageValue) {
+  currentLanguage = normalizeAppLanguage(languageValue);
+  applyTranslations();
+}
 
 function toggleSettingsMenu(event) {
   if (!settingsMenu) return;
@@ -105,7 +412,7 @@ function applyTheme(light) {
 if (themeToggle) {
   themeToggle.addEventListener('click', () => {
     applyTheme(!isLightTheme);
-    showToast(isLightTheme ? 'Mode clair activé' : 'Mode sombre activé');
+    showToast(isLightTheme ? t('toastLight') : t('toastDark'));
   });
 }
 
@@ -116,10 +423,11 @@ const initialProfileData = loadProfileData();
 applyProfileData(initialProfileData);
 savedProfileSnapshot = profileDataToSnapshot(initialProfileData);
 initializeProfileForm();
+applyLanguage(initialProfileData.language);
 updateProfileSaveState();
 
 avatarPageTriggers.forEach(trigger => {
-  trigger.addEventListener('click', showAvatarDevPage);
+  trigger.addEventListener('click', showPersonalInfo);
 });
 
 if (profilePhotoButton && profilePhotoInput) {
@@ -190,7 +498,7 @@ function showEducation() {
 function showPersonalInfo() {
   closePanel();
   closeSettingsMenu();
-  document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('avatar-dev-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'none';
@@ -201,6 +509,7 @@ function showPersonalInfo() {
 function showAvatarDevPage() {
   closePanel();
   closeSettingsMenu();
+  document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'none';
@@ -284,7 +593,7 @@ function saveProfileData() {
   window.localStorage.setItem(profileStorageKey, JSON.stringify(profile));
   savedProfileSnapshot = profileDataToSnapshot(profile);
   updateProfileSaveState();
-  showToast('Profil enregistré');
+  showToast(t('toastProfileSaved'));
 }
 
 function handleProfilePhotoChange(event) {
@@ -292,7 +601,7 @@ function handleProfilePhotoChange(event) {
   if (!file) return;
 
   if (!['image/jpeg', 'image/png'].includes(file.type)) {
-    showToast('Importe un fichier JPEG ou PNG');
+    showToast(t('toastImportImage'));
     event.target.value = '';
     return;
   }
@@ -323,8 +632,18 @@ function initializeProfileForm() {
   ].filter(Boolean);
 
   profileFields.forEach(field => {
-    field.addEventListener('input', updateProfileSaveState);
-    field.addEventListener('change', updateProfileSaveState);
+    field.addEventListener('input', (event) => {
+      if (event.target === profileLanguageSelect) {
+        applyLanguage(event.target.value);
+      }
+      updateProfileSaveState();
+    });
+    field.addEventListener('change', (event) => {
+      if (event.target === profileLanguageSelect) {
+        applyLanguage(event.target.value);
+      }
+      updateProfileSaveState();
+    });
   });
 }
 
@@ -333,12 +652,12 @@ function openPanelSection(section) {
   document.querySelectorAll('.panel-section').forEach(s => s.style.display = 'none');
   
   const titles = {
-    'chat': 'Milo',
-    'planning': 'Planning',
-    'documents': 'Documents',
-    'settings': 'Paramètres'
+    'chat': t('panelChat'),
+    'planning': t('panelPlanning'),
+    'documents': t('panelDocuments'),
+    'settings': t('panelSettings')
   };
-  document.getElementById('panel-title').textContent = titles[section] || 'Panel';
+  document.getElementById('panel-title').textContent = titles[section] || t('panelChat');
   
   // Add fullscreen class for non-chat sections
   if (section !== 'chat') {
@@ -361,11 +680,11 @@ function openPanelSection(section) {
 function setPanelState(state) {
   if (currentPanelSection === 'chat') {
     if (state === 'idle') {
-      panelLabel.textContent = 'Écris un message ou parle à Milo';
+      panelLabel.textContent = t('chatIdle');
     } else if (state === 'listening') {
-      panelLabel.textContent = 'J\'écoute…';
+      panelLabel.textContent = t('chatListening');
     } else if (state === 'thinking') {
-      panelLabel.textContent = 'Milo réfléchit…';
+      panelLabel.textContent = t('chatThinking');
     }
   }
 }
@@ -594,7 +913,7 @@ function endChatSurfaceTouchDrag() {
 function renderChatHistory() {
   if (!chatHistoryEl) return;
   if (chatHistory.length === 0) {
-    chatHistoryEl.innerHTML = `<div class="chat-empty">Aucun échange pour le moment</div>`;
+    chatHistoryEl.innerHTML = `<div class="chat-empty">${t('chatEmpty')}</div>`;
     return;
   }
   chatHistoryEl.innerHTML = chatHistory.map(msg => `<div class="chat-bubble ${msg.role}">${msg.text}</div>`).join('');
@@ -648,14 +967,14 @@ if (planningPanel) {
 let recognition = null;
 function startListening() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    showToast('La reconnaissance vocale n\'est pas disponible.');
+    showToast(t('toastSpeechUnavailable'));
     setPanelState('idle');
     miloBtn.classList.remove('listening');
     return;
   }
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRec();
-  recognition.lang = 'fr-FR';
+  recognition.lang = getCurrentLocale();
   recognition.onresult = (e) => {
     const transcript = e.results[0][0].transcript;
     sendCommand(transcript, 'voice');
@@ -691,7 +1010,7 @@ function parseReminder(text) {
   } else if (/^\d{1,2}h\d{2}$/.test(timeRaw)) {
     time = timeRaw.replace(/h/i, ':');
   }
-  const title = (match[2] || 'Rappel').trim();
+  const title = (match[2] || t('reminderDefaultTitle')).trim();
   return {time, title};
 }
 
@@ -709,12 +1028,12 @@ async function sendCommand(text, mode = 'text') {
       time: reminder.time,
       title: reminder.title,
       description: '',
-      meta: 'Ajouté par commande vocale'
+      meta: t('voiceAddedMeta')
     });
     planningState.events.push(reminderEvent);
     planningState.selectedEventId = reminderEvent.id;
     renderPlanningPanel();
-    const confirm = `Très bien, je vais ajouter un rappel à ${reminder.time} pour : ${reminder.title}`;
+    const confirm = t('reminderConfirm', { time: reminder.time, title: reminder.title });
     miloBtn.classList.remove('thinking');
     setPanelState('idle');
     if (mode === 'text') {
@@ -735,7 +1054,7 @@ async function sendCommand(text, mode = 'text') {
     });
 
     const data = await res.json();
-    const reply = data.reply || "Je n'ai pas compris.";
+    const reply = data.reply || t('chatUnknown');
 
     miloBtn.classList.remove('thinking');
     setPanelState('idle');
@@ -751,9 +1070,9 @@ async function sendCommand(text, mode = 'text') {
     setPanelState('idle');
 
     if (mode === 'text') {
-      addMessageToHistory('milo', 'Erreur serveur : ' + err.message);
+      addMessageToHistory('milo', t('errorServerPrefix') + err.message);
     } else {
-      showToast('Erreur serveur : ' + err.message);
+      showToast(t('errorServerPrefix') + err.message);
     }
   }
 }
@@ -882,7 +1201,7 @@ function renderDayAgenda(events) {
 
   const emptyState = events.length
     ? ''
-    : '<div class="agenda-empty">Aucune tâche ce jour-là. Ajoute-en une pour la voir se placer dans la journée.</div>';
+    : `<div class="agenda-empty">${t('noTasksToday')}</div>`;
 
   agenda.innerHTML = `<div class="day-agenda-scroll"><div class="day-agenda-grid">${hourRows}<div class="agenda-events-layer">${eventCards}</div>${emptyState}</div></div>`;
 
@@ -961,12 +1280,12 @@ function initializePlanningInteractions() {
   });
 
   newTaskBtn.addEventListener('click', () => {
-    const title = prompt('Titre de la tâche:');
+    const title = prompt(t('promptTaskTitle'));
     if (!title) return;
 
-    const time = prompt('Heure (HH:mm):');
+    const time = prompt(t('promptTaskTime'));
     if (!parseTimeParts(time)) {
-      alert('Format invalide. Utilisez HH:mm');
+      alert(t('promptTimeInvalid'));
       return;
     }
 
@@ -996,7 +1315,7 @@ function initializePlanningInteractions() {
 
     const activeTitle = document.querySelector('.agenda-event.active .agenda-name');
     if (activeTitle) {
-      activeTitle.textContent = selectedEvent.title || 'Sans titre';
+      activeTitle.textContent = selectedEvent.title || t('untitledTask');
     }
   });
 
@@ -1008,11 +1327,11 @@ function initializePlanningInteractions() {
 }
 
 function formatLongDate(date) {
-  return date.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+  return date.toLocaleDateString(getCurrentLocale(), {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 }
 
 function formatMonthLabel(date) {
-  return date.toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'});
+  return date.toLocaleDateString(getCurrentLocale(), {month: 'long', year: 'numeric'});
 }
 
 function sameDay(a, b) {
