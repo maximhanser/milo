@@ -835,8 +835,13 @@
     padding: 0 20px 120px;
   }
 
+  .profile-page {
+    height: 100%;
+    position: relative;
+  }
+
   .profile-page-content {
-    padding: 0 20px 260px;
+    padding: 0 20px 230px;
   }
 
   .profile-hero {
@@ -932,12 +937,13 @@
   }
 
   .profile-actions {
-    position: sticky;
-    bottom: 92px;
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 96px;
     padding-top: 14px;
-    margin-top: 10px;
     background: linear-gradient(180deg, rgba(14,14,18,0), rgba(14,14,18,0.92) 28%, rgba(14,14,18,1) 100%);
-    z-index: 5;
+    z-index: 8;
   }
 
   .light-theme .profile-actions {
@@ -945,7 +951,7 @@
   }
 
   .profile-scroll-spacer {
-    height: 120px;
+    height: 16px;
   }
 
 </style>
@@ -1022,7 +1028,7 @@
   </div>
 
   <!-- PAGE: Infos personnelles -->
-  <div id="personal-info-page" style="display: none;">
+  <div id="personal-info-page" class="profile-page" style="display: none;">
   <div class="status-bar">
     <div class="status-right">
       <button class="settings-menu-btn" id="settings-menu-trigger-personal" title="Menu">
@@ -1074,10 +1080,10 @@
     </div>
 
     <div class="profile-scroll-spacer" aria-hidden="true"></div>
+  </div>
 
-    <div class="profile-actions">
-      <button class="profile-save-btn" id="profile-save-btn" type="button">Enregistrer</button>
-    </div>
+  <div class="profile-actions">
+    <button class="profile-save-btn" id="profile-save-btn" type="button">Enregistrer</button>
   </div>
   </div>
 
