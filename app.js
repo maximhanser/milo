@@ -15,6 +15,7 @@ let planningState = {
 
 const panel = document.getElementById('panel');
 const panelHandle = document.getElementById('panel-handle');
+const chatPanel = document.getElementById('panel-chat');
 const planningPanel = document.getElementById('panel-planning');
 const miloBtn = document.getElementById('milo-btn');
 const textInput = document.getElementById('text-input');
@@ -36,6 +37,7 @@ const panelDragState = {
 const settingsMenu = document.getElementById('settings-menu');
 const settingsMenuTrigger = document.getElementById('settings-menu-trigger');
 const settingsMenuTriggerEducation = document.getElementById('settings-menu-trigger-education');
+const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
 const settingsMenuClose = document.getElementById('settings-menu-close');
 const themeToggle = document.getElementById('theme-toggle');
 
@@ -54,7 +56,7 @@ function closeSettingsMenu(event) {
   }
 }
 
-[settingsMenuTrigger, settingsMenuTriggerEducation].filter(Boolean).forEach(trigger => {
+[settingsMenuTrigger, settingsMenuTriggerEducation, settingsMenuTriggerPersonal].filter(Boolean).forEach(trigger => {
   trigger.addEventListener('click', toggleSettingsMenu);
 });
 
@@ -65,7 +67,7 @@ if (settingsMenuClose) {
 document.addEventListener('click', (event) => {
   if (!settingsMenu) return;
 
-  const clickedOnTrigger = [settingsMenuTrigger, settingsMenuTriggerEducation]
+  const clickedOnTrigger = [settingsMenuTrigger, settingsMenuTriggerEducation, settingsMenuTriggerPersonal]
     .filter(Boolean)
     .some(trigger => trigger.contains(event.target));
 
@@ -131,6 +133,7 @@ function showHome() {
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 0));
   document.getElementById('home-page').style.display = 'block';
   document.getElementById('education-page').style.display = 'none';
+  document.getElementById('personal-info-page').style.display = 'none';
 }
 
 function showEducation() {
@@ -138,6 +141,16 @@ function showEducation() {
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 2));
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'block';
+  document.getElementById('personal-info-page').style.display = 'none';
+}
+
+function showPersonalInfo() {
+  closePanel();
+  closeSettingsMenu();
+  document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
+  document.getElementById('home-page').style.display = 'none';
+  document.getElementById('education-page').style.display = 'none';
+  document.getElementById('personal-info-page').style.display = 'block';
 }
 
 function openPanelSection(section) {
@@ -344,6 +357,65 @@ function endPlanningSurfaceTouchDrag() {
   finishPanelDrag();
 }
 
+function canStartChatSurfaceDrag(target) {
+  if (!panelOpen || currentPanelSection !== 'chat' || !chatPanel || !chatHistoryEl) return false;
+  if (chatHistoryEl.scrollTop > 0) return false;
+  if (!(target instanceof Element)) return true;
+  return !target.closest('button, input, textarea, select, a, label, .input-row');
+}
+
+function startChatSurfacePointerDrag(event) {
+  if (event.pointerType === 'touch') return;
+  if (!canStartChatSurfaceDrag(event.target)) return;
+
+  beginPanelDrag({
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    captureTarget: chatPanel,
+    requireActivation: true
+  });
+}
+
+function moveChatSurfacePointerDrag(event) {
+  if (!panelDragState.active || panelDragState.pointerId !== event.pointerId) return;
+  updatePanelDrag(event.clientX, event.clientY);
+}
+
+function endChatSurfacePointerDrag(event) {
+  if (!panelDragState.active || panelDragState.pointerId !== event.pointerId) return;
+  finishPanelDrag();
+}
+
+function startChatSurfaceTouchDrag(event) {
+  if (!canStartChatSurfaceDrag(event.target)) return;
+
+  const touch = getPrimaryTouch(event);
+  if (!touch) return;
+
+  beginPanelDrag({
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    requireActivation: true
+  });
+}
+
+function moveChatSurfaceTouchDrag(event) {
+  if (!panelDragState.active) return;
+
+  const touch = getPrimaryTouch(event);
+  if (!touch) return;
+
+  updatePanelDrag(touch.clientX, touch.clientY);
+  if (panelDragState.dragging) {
+    event.preventDefault();
+  }
+}
+
+function endChatSurfaceTouchDrag() {
+  finishPanelDrag();
+}
+
 function renderChatHistory() {
   if (!chatHistoryEl) return;
   if (chatHistory.length === 0) {
@@ -373,6 +445,17 @@ if (panelHandle) {
   panelHandle.addEventListener('pointermove', movePanelDrag);
   panelHandle.addEventListener('pointerup', endPanelDrag);
   panelHandle.addEventListener('pointercancel', endPanelDrag);
+}
+
+if (chatPanel) {
+  chatPanel.addEventListener('pointerdown', startChatSurfacePointerDrag);
+  chatPanel.addEventListener('pointermove', moveChatSurfacePointerDrag);
+  chatPanel.addEventListener('pointerup', endChatSurfacePointerDrag);
+  chatPanel.addEventListener('pointercancel', endChatSurfacePointerDrag);
+  chatPanel.addEventListener('touchstart', startChatSurfaceTouchDrag, { passive: true });
+  chatPanel.addEventListener('touchmove', moveChatSurfaceTouchDrag, { passive: false });
+  chatPanel.addEventListener('touchend', endChatSurfaceTouchDrag);
+  chatPanel.addEventListener('touchcancel', endChatSurfaceTouchDrag);
 }
 
 if (planningPanel) {

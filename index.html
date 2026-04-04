@@ -835,6 +835,55 @@
     padding: 0 20px 120px;
   }
 
+  .profile-page-content {
+    padding: 0 20px 120px;
+  }
+
+  .profile-hero {
+    background: linear-gradient(180deg, rgba(124,109,240,0.2), rgba(124,109,240,0.08));
+    border: 0.5px solid rgba(124,109,240,0.24);
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+
+  .profile-hero-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .profile-hero-subtitle {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  .profile-field-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .profile-field-value {
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
 </style>
 </head>
 <body>
@@ -908,6 +957,52 @@
   </div>
   </div>
 
+  <!-- PAGE: Infos personnelles -->
+  <div id="personal-info-page" style="display: none;">
+  <div class="status-bar">
+    <div class="status-right">
+      <button class="settings-menu-btn" id="settings-menu-trigger-personal" title="Menu">
+        <span>•••</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="app-name">Profil</div>
+  </div>
+
+  <div class="scroll-area profile-page-content">
+    <div class="profile-hero">
+      <div class="profile-hero-title">Ton espace personnel</div>
+      <div class="profile-hero-subtitle">Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.</div>
+    </div>
+
+    <div class="section-label">Profil</div>
+    <div class="profile-field">
+      <div class="profile-field-label">Prénom</div>
+      <div class="profile-field-value">Maxim</div>
+    </div>
+    <div class="profile-field">
+      <div class="profile-field-label">Email</div>
+      <div class="profile-field-value">maxim@example.com</div>
+    </div>
+    <div class="profile-field">
+      <div class="profile-field-label">Téléphone</div>
+      <div class="profile-field-value">À compléter</div>
+    </div>
+
+    <div class="section-label">Préférences</div>
+    <div class="profile-field">
+      <div class="profile-field-label">Langue</div>
+      <div class="profile-field-value">Français</div>
+    </div>
+    <div class="profile-field">
+      <div class="profile-field-label">Compte</div>
+      <div class="profile-field-value">Personnel</div>
+    </div>
+  </div>
+  </div>
+
   <!-- Milo button -->
   <div class="milo-btn-wrap">
     <button class="milo-btn" id="milo-btn" type="button">
@@ -951,7 +1046,7 @@
       <span>Éducation</span>
     </div>
 
-    <div class="nav-item" onclick="openPanelSection('settings')">
+    <div class="nav-item" onclick="showPersonalInfo()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <circle cx="10" cy="7" r="3"/>
         <path d="M3 18c0-3.9 3.1-7 7-7s7 3.1 7 7"/>
