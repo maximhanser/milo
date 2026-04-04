@@ -50,13 +50,35 @@
   /* Status bar */
   .status-bar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     padding: 16px 24px 8px;
     flex-shrink: 0;
   }
+  .status-left { display: flex; align-items: center; }
   .status-right { display: flex; gap: 6px; align-items: center; }
   .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text2); }
+
+  .avatar-trigger {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 
   /* Header */
   .header {
@@ -912,6 +934,73 @@
     cursor: pointer;
   }
 
+  .profile-photo-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .profile-photo-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    background: var(--bg3);
+  }
+
+  .profile-photo-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .profile-photo-name {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .profile-photo-help {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .profile-photo-button {
+    border: none;
+    background: rgba(124,109,240,0.18);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .profile-photo-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .profile-photo-remove {
+    border: none;
+    background: rgba(255,255,255,0.08);
+    color: var(--text2);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .profile-photo-input {
+    display: none;
+  }
+
   .profile-save-btn {
     width: 100%;
     border: none;
@@ -959,6 +1048,39 @@
     height: 16px;
   }
 
+  .dev-page-content {
+    flex: 1;
+    min-height: 0;
+    padding: 0 20px 120px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .dev-page-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dev-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    padding: 22px 18px;
+  }
+
+  .dev-card-title {
+    font-size: 18px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .dev-card-copy {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
 </style>
 </head>
 <body>
@@ -980,6 +1102,11 @@
   <!-- PAGE: Home -->
   <div id="home-page">
   <div class="status-bar">
+    <div class="status-left">
+      <button class="avatar-trigger" type="button" data-open-avatar-page>
+        <img class="avatar-image profile-avatar-image" alt="Photo de profil" />
+      </button>
+    </div>
     <div class="status-right">
       <button class="settings-menu-btn" id="settings-menu-trigger" title="Menu">
         <span>•••</span>
@@ -1032,9 +1159,41 @@
   </div>
   </div>
 
+  <!-- PAGE: Photo de profil -->
+  <div id="avatar-dev-page" class="profile-page" style="display: none;">
+  <div class="status-bar">
+    <div class="status-left">
+      <button class="avatar-trigger" type="button" data-open-avatar-page>
+        <img class="avatar-image profile-avatar-image" alt="Photo de profil" />
+      </button>
+    </div>
+    <div class="status-right">
+      <button class="settings-menu-btn" id="settings-menu-trigger-avatar" title="Menu">
+        <span>•••</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="app-name">Photo profil</div>
+  </div>
+
+  <div class="dev-page-content">
+    <div class="dev-card">
+      <div class="dev-card-title">En cours de dev</div>
+      <div class="dev-card-copy">Cette page entière est prête à accueillir la gestion complète de la photo de profil. Pour l’instant, l’import de photo se fait depuis le menu Profil.</div>
+    </div>
+  </div>
+  </div>
+
   <!-- PAGE: Infos personnelles -->
   <div id="personal-info-page" class="profile-page" style="display: none;">
   <div class="status-bar">
+    <div class="status-left">
+      <button class="avatar-trigger" type="button" data-open-avatar-page>
+        <img class="avatar-image profile-avatar-image" alt="Photo de profil" />
+      </button>
+    </div>
     <div class="status-right">
       <button class="settings-menu-btn" id="settings-menu-trigger-personal" title="Menu">
         <span>•••</span>
@@ -1064,6 +1223,23 @@
     <div class="profile-field">
       <div class="profile-field-label">Téléphone</div>
       <input class="profile-field-input" id="profile-phone" value="" placeholder="Téléphone" />
+    </div>
+    <div class="profile-field">
+      <div class="profile-field-label">Photo de profil</div>
+      <div class="profile-photo-row">
+        <div class="profile-photo-preview">
+          <img class="avatar-image profile-avatar-image" id="profile-photo-preview" alt="Aperçu photo de profil" />
+        </div>
+        <div class="profile-photo-meta">
+          <div class="profile-photo-name">Photo actuelle</div>
+          <div class="profile-photo-help">JPEG ou PNG uniquement</div>
+        </div>
+        <div class="profile-photo-actions">
+          <button class="profile-photo-button" id="profile-photo-button" type="button">Importer</button>
+          <button class="profile-photo-remove" id="profile-photo-remove" type="button">Retirer</button>
+        </div>
+        <input class="profile-photo-input" id="profile-photo-input" type="file" accept="image/png,image/jpeg" />
+      </div>
     </div>
 
     <div class="section-label">Préférences</div>
@@ -1147,6 +1323,11 @@
   <!-- PAGE: Education -->
   <div id="education-page" style="display: none;">
   <div class="status-bar">
+    <div class="status-left">
+      <button class="avatar-trigger" type="button" data-open-avatar-page>
+        <img class="avatar-image profile-avatar-image" alt="Photo de profil" />
+      </button>
+    </div>
     <div class="status-right">
       <button class="settings-menu-btn" id="settings-menu-trigger-education" title="Menu">
         <span>•••</span>

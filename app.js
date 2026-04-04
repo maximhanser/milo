@@ -37,18 +37,25 @@ const panelDragState = {
 // Settings menu
 const settingsMenu = document.getElementById('settings-menu');
 const settingsMenuTrigger = document.getElementById('settings-menu-trigger');
+const settingsMenuTriggerAvatar = document.getElementById('settings-menu-trigger-avatar');
 const settingsMenuTriggerEducation = document.getElementById('settings-menu-trigger-education');
 const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
 const settingsMenuClose = document.getElementById('settings-menu-close');
 const themeToggle = document.getElementById('theme-toggle');
+const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
+const avatarImages = document.querySelectorAll('.profile-avatar-image');
 const profileFirstNameInput = document.getElementById('profile-first-name');
 const profileEmailInput = document.getElementById('profile-email');
 const profilePhoneInput = document.getElementById('profile-phone');
 const profileLanguageSelect = document.getElementById('profile-language');
 const profileAccountTypeSelect = document.getElementById('profile-account-type');
+const profilePhotoButton = document.getElementById('profile-photo-button');
+const profilePhotoRemoveButton = document.getElementById('profile-photo-remove');
+const profilePhotoInput = document.getElementById('profile-photo-input');
 const profileSaveButton = document.getElementById('profile-save-btn');
 const profileStorageKey = 'milo.profile';
 let savedProfileSnapshot = null;
+let currentProfilePhotoData = '';
 
 function toggleSettingsMenu(event) {
   if (!settingsMenu) return;
@@ -65,7 +72,7 @@ function closeSettingsMenu(event) {
   }
 }
 
-[settingsMenuTrigger, settingsMenuTriggerEducation, settingsMenuTriggerPersonal].filter(Boolean).forEach(trigger => {
+[settingsMenuTrigger, settingsMenuTriggerAvatar, settingsMenuTriggerEducation, settingsMenuTriggerPersonal].filter(Boolean).forEach(trigger => {
   trigger.addEventListener('click', toggleSettingsMenu);
 });
 
@@ -76,7 +83,7 @@ if (settingsMenuClose) {
 document.addEventListener('click', (event) => {
   if (!settingsMenu) return;
 
-  const clickedOnTrigger = [settingsMenuTrigger, settingsMenuTriggerEducation, settingsMenuTriggerPersonal]
+  const clickedOnTrigger = [settingsMenuTrigger, settingsMenuTriggerAvatar, settingsMenuTriggerEducation, settingsMenuTriggerPersonal]
     .filter(Boolean)
     .some(trigger => trigger.contains(event.target));
 
@@ -110,6 +117,19 @@ applyProfileData(initialProfileData);
 savedProfileSnapshot = profileDataToSnapshot(initialProfileData);
 initializeProfileForm();
 updateProfileSaveState();
+
+avatarPageTriggers.forEach(trigger => {
+  trigger.addEventListener('click', showAvatarDevPage);
+});
+
+if (profilePhotoButton && profilePhotoInput) {
+  profilePhotoButton.addEventListener('click', () => profilePhotoInput.click());
+  profilePhotoInput.addEventListener('change', handleProfilePhotoChange);
+}
+
+if (profilePhotoRemoveButton) {
+  profilePhotoRemoveButton.addEventListener('click', removeProfilePhoto);
+}
 
 if (profileSaveButton) {
   profileSaveButton.addEventListener('click', saveProfileData);
@@ -151,6 +171,7 @@ function showHome() {
   closePanel();
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 0));
   document.getElementById('home-page').style.display = 'block';
+  document.getElementById('avatar-dev-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'none';
   if (miloBtnWrap) miloBtnWrap.style.display = 'block';
@@ -160,6 +181,7 @@ function showEducation() {
   closePanel();
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 2));
   document.getElementById('home-page').style.display = 'none';
+  document.getElementById('avatar-dev-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'block';
   document.getElementById('personal-info-page').style.display = 'none';
   if (miloBtnWrap) miloBtnWrap.style.display = 'block';
@@ -170,9 +192,32 @@ function showPersonalInfo() {
   closeSettingsMenu();
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
   document.getElementById('home-page').style.display = 'none';
+  document.getElementById('avatar-dev-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'flex';
   if (miloBtnWrap) miloBtnWrap.style.display = 'none';
+}
+
+function showAvatarDevPage() {
+  closePanel();
+  closeSettingsMenu();
+  document.getElementById('home-page').style.display = 'none';
+  document.getElementById('education-page').style.display = 'none';
+  document.getElementById('personal-info-page').style.display = 'none';
+  document.getElementById('avatar-dev-page').style.display = 'flex';
+  if (miloBtnWrap) miloBtnWrap.style.display = 'none';
+}
+
+function getDefaultAvatarData() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#1e1e28"/><circle cx="32" cy="24" r="12" fill="#7c6df0"/><path d="M14 56c3-11 11-17 18-17s15 6 18 17" fill="#7c6df0"/></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function updateAvatarImages(photoData) {
+  const src = photoData || getDefaultAvatarData();
+  avatarImages.forEach(image => {
+    image.src = src;
+  });
 }
 
 function getDefaultProfile() {
@@ -181,7 +226,8 @@ function getDefaultProfile() {
     email: 'maxim@example.com',
     phone: '',
     language: 'Français',
-    accountType: 'Personnel'
+    accountType: 'Personnel',
+    photo: ''
   };
 }
 
@@ -201,11 +247,13 @@ function loadProfileData() {
 }
 
 function applyProfileData(profile) {
+  currentProfilePhotoData = profile.photo || '';
   if (profileFirstNameInput) profileFirstNameInput.value = profile.firstName || '';
   if (profileEmailInput) profileEmailInput.value = profile.email || '';
   if (profilePhoneInput) profilePhoneInput.value = profile.phone || '';
   if (profileLanguageSelect) profileLanguageSelect.value = profile.language || 'Français';
   if (profileAccountTypeSelect) profileAccountTypeSelect.value = profile.accountType || 'Personnel';
+  updateAvatarImages(currentProfilePhotoData);
 }
 
 function collectProfileData() {
@@ -214,7 +262,8 @@ function collectProfileData() {
     email: profileEmailInput?.value.trim() || '',
     phone: profilePhoneInput?.value.trim() || '',
     language: profileLanguageSelect?.value || 'Français',
-    accountType: profileAccountTypeSelect?.value || 'Personnel'
+    accountType: profileAccountTypeSelect?.value || 'Personnel',
+    photo: currentProfilePhotoData || ''
   };
 }
 
@@ -236,6 +285,32 @@ function saveProfileData() {
   savedProfileSnapshot = profileDataToSnapshot(profile);
   updateProfileSaveState();
   showToast('Profil enregistré');
+}
+
+function handleProfilePhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (!['image/jpeg', 'image/png'].includes(file.type)) {
+    showToast('Importe un fichier JPEG ou PNG');
+    event.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentProfilePhotoData = typeof reader.result === 'string' ? reader.result : '';
+    updateAvatarImages(currentProfilePhotoData);
+    updateProfileSaveState();
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function removeProfilePhoto() {
+  currentProfilePhotoData = '';
+  updateAvatarImages('');
+  updateProfileSaveState();
 }
 
 function initializeProfileForm() {
