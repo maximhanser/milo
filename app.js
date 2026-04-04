@@ -23,6 +23,7 @@ let planningState = {
 
 const panel = document.getElementById('panel');
 const panelHandle = document.getElementById('panel-handle');
+const planningPanel = document.getElementById('panel-planning');
 const miloBtn = document.getElementById('milo-btn');
 const textInput = document.getElementById('text-input');
 const sendBtn = document.getElementById('send-btn');
@@ -31,8 +32,12 @@ const panelLabel = document.getElementById('panel-label');
 const panelDragState = {
   active: false,
   pointerId: null,
+  captureTarget: null,
   startY: 0,
-  deltaY: 0
+  startX: 0,
+  deltaY: 0,
+  dragging: false,
+  requireActivation: false
 };
 
 // Settings menu
@@ -107,10 +112,7 @@ function openPanel() {
 
 function closePanel() {
   panelOpen = false;
-  panelDragState.active = false;
-  panelDragState.pointerId = null;
-  panelDragState.startY = 0;
-  panelDragState.deltaY = 0;
+  resetPanelDrag();
   panel.classList.remove('dragging');
   panel.style.transition = '';
   panel.style.transform = '';
@@ -189,46 +191,73 @@ function setPanelState(state) {
 }
 
 function getPanelCloseThreshold() {
-  return panel.classList.contains('fullscreen') ? 120 : 90;
+  return panel.classList.contains('fullscreen') ? 180 : 90;
 }
 
-function startPanelDrag(event) {
+function resetPanelDrag() {
+  panelDragState.active = false;
+  panelDragState.pointerId = null;
+  panelDragState.captureTarget = null;
+  panelDragState.startY = 0;
+  panelDragState.startX = 0;
+  panelDragState.deltaY = 0;
+  panelDragState.dragging = false;
+  panelDragState.requireActivation = false;
+}
+
+function beginPanelDrag({ pointerId = null, clientX, clientY, captureTarget = null, requireActivation = false }) {
   if (!panelOpen) return;
 
   panelDragState.active = true;
-  panelDragState.pointerId = event.pointerId;
-  panelDragState.startY = event.clientY;
+  panelDragState.pointerId = pointerId;
+  panelDragState.captureTarget = captureTarget;
+  panelDragState.startX = clientX;
+  panelDragState.startY = clientY;
   panelDragState.deltaY = 0;
+  panelDragState.dragging = !requireActivation;
+  panelDragState.requireActivation = requireActivation;
 
-  panel.classList.add('dragging');
-  panel.style.transition = 'none';
+  if (panelDragState.dragging) {
+    panel.classList.add('dragging');
+    panel.style.transition = 'none';
+  }
 
-  if (panelHandle.setPointerCapture) {
-    panelHandle.setPointerCapture(event.pointerId);
+  if (captureTarget?.setPointerCapture && pointerId !== null) {
+    captureTarget.setPointerCapture(pointerId);
   }
 }
 
-function movePanelDrag(event) {
+function updatePanelDrag(clientX, clientY) {
   if (!panelDragState.active) return;
 
-  const deltaY = Math.max(0, event.clientY - panelDragState.startY);
+  const deltaX = clientX - panelDragState.startX;
+  const rawDeltaY = clientY - panelDragState.startY;
+
+  if (!panelDragState.dragging) {
+    const isDownwardSwipe = rawDeltaY > 26 && rawDeltaY > Math.abs(deltaX);
+    if (!isDownwardSwipe) return;
+
+    panelDragState.dragging = true;
+    panel.classList.add('dragging');
+    panel.style.transition = 'none';
+  }
+
+  const activationOffset = panelDragState.requireActivation ? 26 : 0;
+  const deltaY = Math.max(0, rawDeltaY - activationOffset);
   panelDragState.deltaY = deltaY;
   panel.style.transform = `translateY(${deltaY}px)`;
 }
 
-function endPanelDrag(event) {
+function finishPanelDrag() {
   if (!panelDragState.active) return;
 
-  const shouldClose = panelDragState.deltaY > getPanelCloseThreshold();
+  const shouldClose = panelDragState.dragging && panelDragState.deltaY > getPanelCloseThreshold();
 
-  if (panelHandle.releasePointerCapture && panelDragState.pointerId !== null) {
-    panelHandle.releasePointerCapture(panelDragState.pointerId);
+  if (panelDragState.captureTarget?.releasePointerCapture && panelDragState.pointerId !== null) {
+    panelDragState.captureTarget.releasePointerCapture(panelDragState.pointerId);
   }
 
-  panelDragState.active = false;
-  panelDragState.pointerId = null;
-  panelDragState.startY = 0;
-  panelDragState.deltaY = 0;
+  resetPanelDrag();
   panel.classList.remove('dragging');
   panel.style.transition = '';
 
@@ -238,6 +267,89 @@ function endPanelDrag(event) {
   }
 
   panel.style.transform = '';
+}
+
+function startPanelDrag(event) {
+  beginPanelDrag({
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    captureTarget: panelHandle,
+    requireActivation: false
+  });
+}
+
+function movePanelDrag(event) {
+  if (panelDragState.pointerId !== null && event.pointerId !== panelDragState.pointerId) return;
+  updatePanelDrag(event.clientX, event.clientY);
+}
+
+function endPanelDrag(event) {
+  if (panelDragState.pointerId !== null && event.pointerId !== panelDragState.pointerId) return;
+  finishPanelDrag();
+}
+
+function canStartPlanningSurfaceDrag(target) {
+  if (!panelOpen || currentPanelSection !== 'planning' || !planningPanel) return false;
+  if (planningPanel.scrollTop > 0) return false;
+  if (!(target instanceof Element)) return true;
+  return !target.closest('button, input, textarea, select, a, label');
+}
+
+function startPlanningSurfacePointerDrag(event) {
+  if (event.pointerType === 'touch') return;
+  if (!canStartPlanningSurfaceDrag(event.target)) return;
+
+  beginPanelDrag({
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    captureTarget: planningPanel,
+    requireActivation: true
+  });
+}
+
+function movePlanningSurfacePointerDrag(event) {
+  if (!panelDragState.active || panelDragState.pointerId !== event.pointerId) return;
+  updatePanelDrag(event.clientX, event.clientY);
+}
+
+function endPlanningSurfacePointerDrag(event) {
+  if (!panelDragState.active || panelDragState.pointerId !== event.pointerId) return;
+  finishPanelDrag();
+}
+
+function getPrimaryTouch(event) {
+  return event.changedTouches[0] || event.touches[0] || null;
+}
+
+function startPlanningSurfaceTouchDrag(event) {
+  if (!canStartPlanningSurfaceDrag(event.target)) return;
+
+  const touch = getPrimaryTouch(event);
+  if (!touch) return;
+
+  beginPanelDrag({
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    requireActivation: true
+  });
+}
+
+function movePlanningSurfaceTouchDrag(event) {
+  if (!panelDragState.active) return;
+
+  const touch = getPrimaryTouch(event);
+  if (!touch) return;
+
+  updatePanelDrag(touch.clientX, touch.clientY);
+  if (panelDragState.dragging) {
+    event.preventDefault();
+  }
+}
+
+function endPlanningSurfaceTouchDrag() {
+  finishPanelDrag();
 }
 
 function renderChatHistory() {
@@ -269,6 +381,17 @@ if (panelHandle) {
   panelHandle.addEventListener('pointermove', movePanelDrag);
   panelHandle.addEventListener('pointerup', endPanelDrag);
   panelHandle.addEventListener('pointercancel', endPanelDrag);
+}
+
+if (planningPanel) {
+  planningPanel.addEventListener('pointerdown', startPlanningSurfacePointerDrag);
+  planningPanel.addEventListener('pointermove', movePlanningSurfacePointerDrag);
+  planningPanel.addEventListener('pointerup', endPlanningSurfacePointerDrag);
+  planningPanel.addEventListener('pointercancel', endPlanningSurfacePointerDrag);
+  planningPanel.addEventListener('touchstart', startPlanningSurfaceTouchDrag, { passive: true });
+  planningPanel.addEventListener('touchmove', movePlanningSurfaceTouchDrag, { passive: false });
+  planningPanel.addEventListener('touchend', endPlanningSurfaceTouchDrag);
+  planningPanel.addEventListener('touchcancel', endPlanningSurfaceTouchDrag);
 }
 
 // Voice recognition
