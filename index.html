@@ -838,9 +838,14 @@
   .profile-page {
     height: 100%;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .profile-page-content {
+    flex: 1;
+    min-height: 0;
     padding: 0 20px 230px;
   }
 

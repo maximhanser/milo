@@ -171,7 +171,7 @@ function showPersonalInfo() {
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('education-page').style.display = 'none';
-  document.getElementById('personal-info-page').style.display = 'block';
+  document.getElementById('personal-info-page').style.display = 'flex';
   if (miloBtnWrap) miloBtnWrap.style.display = 'none';
 }
 
