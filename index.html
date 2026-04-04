@@ -548,6 +548,65 @@
     color: var(--text3);
   }
 
+  .education-message-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .education-message-card.user {
+    align-items: flex-end;
+  }
+
+  .education-rich-message {
+    max-width: 100%;
+  }
+
+  .education-rich-message h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .education-rich-message p {
+    margin: 0 0 8px;
+  }
+
+  .education-rich-message ul,
+  .education-rich-message ol {
+    margin: 0 0 10px 18px;
+    padding: 0;
+  }
+
+  .education-rich-message li {
+    margin-bottom: 6px;
+  }
+
+  .education-rich-message strong {
+    color: var(--text);
+  }
+
+  .education-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0.5px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+  }
+
+  .education-download-btn:hover {
+    color: var(--text);
+    border-color: rgba(124,109,240,0.35);
+    background: rgba(124,109,240,0.08);
+  }
+
   /* Planning */
   .planning-controls {
     display: flex;
@@ -1683,6 +1742,7 @@
   </div>
 
 </div>
+<script src="node_modules/jspdf/dist/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

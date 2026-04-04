@@ -134,6 +134,9 @@
         educationChatIdle: 'Colle un texte ou choisis un document puis demande une fiche, une reformulation ou un quiz.',
         educationChatThinking: 'Milo Éducation prépare ta réponse…',
         educationChatPlaceholder: 'Demande une fiche, un quiz ou une reformulation…',
+        educationDownloadPdf: 'Télécharger en PDF',
+        educationPdfFallbackTitle: 'Document Milo Education',
+        educationPdfUnavailable: 'Le module PDF n\'est pas disponible pour le moment.',
         educationFilesToggleLabel: 'Ajouter des fichiers',
         educationDropzoneTitle: 'Dépose jusqu\'à 3 fichiers',
         educationDropzoneHelp: 'TXT, MD, CSV ou JSON. Tu peux ensuite ajouter une consigne dans le chat.',
@@ -244,6 +247,9 @@
         educationChatIdle: 'Paste text or choose a document, then ask for notes, a rewrite or a quiz.',
         educationChatThinking: 'Milo Education is preparing your answer…',
         educationChatPlaceholder: 'Ask for notes, a quiz or a rewrite…',
+        educationDownloadPdf: 'Download PDF',
+        educationPdfFallbackTitle: 'Milo Education Document',
+        educationPdfUnavailable: 'The PDF module is not available right now.',
         educationFilesToggleLabel: 'Add files',
         educationDropzoneTitle: 'Drop up to 3 files',
         educationDropzoneHelp: 'TXT, MD, CSV or JSON. You can still add an instruction in chat afterwards.',
@@ -573,6 +579,12 @@ if (uploadDocumentButton && educationDocumentInput) {
 }
 
 document.addEventListener('click', (event) => {
+  const downloadButton = event.target.closest('[data-download-education-message-index]');
+  if (downloadButton) {
+    downloadEducationMessagePdf(Number(downloadButton.dataset.downloadEducationMessageIndex));
+    return;
+  }
+
   const removeButton = event.target.closest('[data-remove-document-id]');
   if (removeButton) {
     removeEducationDocument(removeButton.dataset.removeDocumentId);
@@ -1073,6 +1085,117 @@ function addMessageToHistory(role, text) {
   renderChatHistory();
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatEducationInline(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>');
+}
+
+function formatEducationMessage(text) {
+  const normalizedText = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!normalizedText) return '';
+
+  const blocks = normalizedText.split(/\n\s*\n/).filter(Boolean);
+  return blocks.map((block) => {
+    const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
+    if (lines.length === 0) return '';
+
+    if (lines.every(line => /^[-*]\s+/.test(line))) {
+      return `<ul>${lines.map(line => `<li>${formatEducationInline(line.replace(/^[-*]\s+/, ''))}</li>`).join('')}</ul>`;
+    }
+
+    if (lines.every(line => /^\d+\.\s+/.test(line))) {
+      return `<ol>${lines.map(line => `<li>${formatEducationInline(line.replace(/^\d+\.\s+/, ''))}</li>`).join('')}</ol>`;
+    }
+
+    if (lines.length === 1 && /^\*\*(.+?)\*\*:?$/.test(lines[0])) {
+      return `<h4>${formatEducationInline(lines[0].replace(/^\*\*(.+?)\*\*:?$/, '$1'))}</h4>`;
+    }
+
+    if (lines.length === 1 && /^#{1,4}\s+/.test(lines[0])) {
+      return `<h4>${formatEducationInline(lines[0].replace(/^#{1,4}\s+/, ''))}</h4>`;
+    }
+
+    if (lines.length === 1 && /^[A-ZÀ-ÿ][^\n]{0,90}:$/.test(lines[0])) {
+      return `<h4>${formatEducationInline(lines[0].slice(0, -1))}</h4>`;
+    }
+
+    return `<p>${lines.map(formatEducationInline).join('<br>')}</p>`;
+  }).join('');
+}
+
+function stripEducationFormatting(text) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/^#{1,4}\s+/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .trim();
+}
+
+function extractEducationPdfTitle(text) {
+  const lines = stripEducationFormatting(text).split('\n').map(line => line.trim()).filter(Boolean);
+  return lines[0] || t('educationPdfFallbackTitle');
+}
+
+function slugifyEducationFileName(value) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'milo-education';
+}
+
+function downloadEducationMessagePdf(messageIndex) {
+  const jsPDF = window.jspdf?.jsPDF;
+  if (!jsPDF) {
+    showToast(t('educationPdfUnavailable'));
+    return;
+  }
+
+  const message = educationChatHistory[messageIndex];
+  if (!message || message.role !== 'milo') return;
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 42;
+  const title = extractEducationPdfTitle(message.text);
+  const body = stripEducationFormatting(message.text);
+
+  let y = margin;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  const titleLines = doc.splitTextToSize(title, pageWidth - margin * 2);
+  doc.text(titleLines, margin, y);
+  y += titleLines.length * 20 + 10;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  const bodyLines = doc.splitTextToSize(body, pageWidth - margin * 2);
+
+  bodyLines.forEach((line) => {
+    if (y > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.text(line, margin, y);
+    y += 16;
+  });
+
+  doc.save(`${slugifyEducationFileName(title)}.pdf`);
+}
+
 function renderEducationChatHistory() {
   if (!educationChatHistoryEl) return;
   if (educationChatHistory.length === 0) {
@@ -1080,7 +1203,25 @@ function renderEducationChatHistory() {
     return;
   }
 
-  educationChatHistoryEl.innerHTML = educationChatHistory.map(msg => `<div class="chat-bubble ${msg.role}">${msg.text}</div>`).join('');
+  educationChatHistoryEl.innerHTML = educationChatHistory.map((msg, index) => {
+    if (msg.role === 'milo') {
+      return `
+        <div class="education-message-card milo">
+          <div class="chat-bubble milo education-rich-message">${formatEducationMessage(msg.text)}</div>
+          <button type="button" class="education-download-btn" data-download-education-message-index="${index}" title="${escapeHtml(t('educationDownloadPdf'))}" aria-label="${escapeHtml(t('educationDownloadPdf'))}">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 1.5v5.5"/>
+              <path d="M3.8 5.2L6 7.5l2.2-2.3"/>
+              <path d="M2 9.5h8"/>
+            </svg>
+            <span>${escapeHtml(t('educationDownloadPdf'))}</span>
+          </button>
+        </div>
+      `;
+    }
+
+    return `<div class="education-message-card user"><div class="chat-bubble user">${escapeHtml(msg.text)}</div></div>`;
+  }).join('');
   educationChatHistoryEl.scrollTop = educationChatHistoryEl.scrollHeight;
 }
 
@@ -1161,9 +1302,17 @@ function renderDocumentsList() {
   }
 }
 
-function getEducationStudyContext() {
+function shouldUseChatMessageAsStudySource(message) {
+  const value = (message || '').trim();
+  return value.length >= 120 || value.includes('\n');
+}
+
+function getEducationStudyContext(fallbackText = '') {
+  const pastedText = educationSourceTextArea?.value.trim() || '';
+  const chatFallback = shouldUseChatMessageAsStudySource(fallbackText) ? fallbackText.trim() : '';
+
   return {
-    pastedText: educationSourceTextArea?.value.trim() || '',
+    pastedText: pastedText || chatFallback,
     selectedDocumentId: selectedEducationDocumentId,
     documents: educationDocuments.map(document => ({
       id: document.id,
@@ -1363,12 +1512,8 @@ function sendEducationFromInput() {
   }
 
   const v = educationTextInput?.value.trim();
-  const studyContext = getEducationStudyContext();
+  const studyContext = getEducationStudyContext(v);
   if (!v) return;
-  if (!studyContext.pastedText && studyContext.documents.length === 0) {
-    showToast(t('educationNoSource'));
-    return;
-  }
 
   openPanelSection('education-chat');
   addMessageToEducationHistory('user', v);
@@ -1429,7 +1574,7 @@ function getEducationAgentRequestPayload(message) {
     language: currentLanguage,
     sessionId: `${getChatSessionId()}-education`,
     profile: collectProfileData(),
-    studyContext: getEducationStudyContext(),
+    studyContext: getEducationStudyContext(message),
     agent: 'education'
   };
 }
