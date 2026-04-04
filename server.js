@@ -93,6 +93,12 @@ function getAssistantSystemPrompt() {
   ].join(" ");
 }
 
+function getNoUnderstandingReply(language = "fr") {
+  return language === "en"
+    ? "I didn't understand your request clearly. Can you rephrase it more precisely?"
+    : "Je n'ai pas bien compris ta demande. Reformule-la plus précisément.";
+}
+
 function extractAssistantReply(response) {
   if (response?.output_text) {
     return response.output_text;
@@ -625,7 +631,7 @@ async function runAgentCompletion({ client, model, message, history, language, p
   }
 
   return {
-    reply: finalReply || "Je n'ai pas de réponse pour le moment.",
+    reply: finalReply || getNoUnderstandingReply(language),
     actions: runtime.actions,
     memory: getMemorySnapshot(sessionId)
   };
