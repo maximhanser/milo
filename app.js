@@ -54,6 +54,7 @@ const profilePhotoRemoveButton = document.getElementById('profile-photo-remove')
 const profilePhotoInput = document.getElementById('profile-photo-input');
 const profileSaveButton = document.getElementById('profile-save-btn');
 const profileStorageKey = 'milo.profile';
+const chatSessionStorageKey = 'milo.chatSessionId';
 let savedProfileSnapshot = null;
 let currentProfilePhotoData = '';
 let currentLanguage = 'fr';
@@ -1014,11 +1015,76 @@ function parseReminder(text) {
   return {time, title};
 }
 
+function getChatSessionId() {
+  const existing = window.localStorage.getItem(chatSessionStorageKey);
+  if (existing) return existing;
+
+  const generated = `milo-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  window.localStorage.setItem(chatSessionStorageKey, generated);
+  return generated;
+}
+
+function getAgentRequestPayload(message) {
+  return {
+    message,
+    history: chatHistory,
+    language: currentLanguage,
+    sessionId: getChatSessionId(),
+    profile: collectProfileData(),
+    planning: {
+      view: planningState.view,
+      currentDate: planningState.currentDate.toISOString(),
+      events: planningState.events.map(event => ({
+        date: event.date,
+        time: event.time,
+        title: event.title,
+        description: event.description,
+        meta: event.meta
+      }))
+    }
+  };
+}
+
+function applyAgentActions(actions = []) {
+  if (!Array.isArray(actions) || actions.length === 0) return;
+
+  actions.forEach((action) => {
+    if (action?.type !== 'add_planning_event' || !action.event) return;
+
+    const existingEvent = planningState.events.find((event) => (
+      event.date === action.event.date
+      && event.time === action.event.time
+      && event.title === action.event.title
+      && event.description === (action.event.description || '')
+    ));
+
+    if (existingEvent) {
+      planningState.selectedEventId = existingEvent.id;
+      return;
+    }
+
+    const createdEvent = createPlanningEvent({
+      date: action.event.date,
+      time: action.event.time,
+      title: action.event.title,
+      description: action.event.description || '',
+      meta: action.event.meta || 'Ajouté par Milo'
+    });
+
+    planningState.events.push(createdEvent);
+    planningState.selectedEventId = createdEvent.id;
+
+    if (action.openPlanning && action.event.date) {
+      openPlanningDay(action.event.date);
+    }
+  });
+
+  renderPlanningPanel();
+}
+
 async function sendCommand(text, mode = 'text') {
   miloBtn.classList.add('thinking');
   setPanelState('thinking');
-
-  const systemPrompt = `Tu es Milo, un assistant personnel. Réponds TOUJOURS en français, très court (1-2 phrases). Sois chaleureux et efficace.`;
 
   const reminder = parseReminder(text);
   if (reminder) {
@@ -1048,13 +1114,12 @@ async function sendCommand(text, mode = 'text') {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        message: text
-      })
+      body: JSON.stringify(getAgentRequestPayload(text))
     });
 
     const data = await res.json();
     const reply = data.reply || t('chatUnknown');
+    applyAgentActions(data.actions);
 
     miloBtn.classList.remove('thinking');
     setPanelState('idle');
