@@ -1,24 +1,16 @@
-function updateClock() {
-  const now = new Date();
-  const t = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
-  const clock = document.getElementById('clock');
-  if (clock) clock.textContent = t;
-
-  const clockEducation = document.getElementById('clock-education');
-  if (clockEducation) clockEducation.textContent = t;
-}
-updateClock();
-setInterval(updateClock, 10000);
-
 // Panel management
 let panelOpen = false;
 let chatHistory = [];
 let currentPanelSection = 'chat';
+const DAY_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+const DAY_SLOT_HEIGHT = 72;
+const DAY_EVENT_HEIGHT = 56;
 let planningState = {
   view: 'day',
-  currentDate: new Date(2026, 0, 1),
-  events: []
+  currentDate: new Date(),
+  events: [],
+  selectedEventId: null,
+  nextEventId: 1
 };
 
 const panel = document.getElementById('panel');
@@ -454,7 +446,15 @@ async function sendCommand(text, mode = 'text') {
   const reminder = parseReminder(text);
   if (reminder) {
     const key = formatDateKey(planningState.currentDate);
-    planningState.events.push({date: key, time: reminder.time, title: reminder.title, meta: 'Ajouté par commande vocale'});
+    const reminderEvent = createPlanningEvent({
+      date: key,
+      time: reminder.time,
+      title: reminder.title,
+      description: '',
+      meta: 'Ajouté par commande vocale'
+    });
+    planningState.events.push(reminderEvent);
+    planningState.selectedEventId = reminderEvent.id;
     renderPlanningPanel();
     const confirm = `Très bien, je vais ajouter un rappel à ${reminder.time} pour : ${reminder.title}`;
     miloBtn.classList.remove('thinking');
@@ -521,6 +521,234 @@ function formatDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+function createPlanningEvent({ date, time, title, description = '', meta = '' }) {
+  const normalizedTime = normalizeTimeString(time);
+  return {
+    id: planningState.nextEventId++,
+    date,
+    time: normalizedTime || time,
+    title,
+    description,
+    meta
+  };
+}
+
+function ensurePlanningEventsStructure() {
+  planningState.events = planningState.events.map(event => {
+    if (typeof event.id !== 'number') {
+      event.id = planningState.nextEventId++;
+    } else if (event.id >= planningState.nextEventId) {
+      planningState.nextEventId = event.id + 1;
+    }
+
+    if (typeof event.description !== 'string') {
+      event.description = '';
+    }
+
+    if (typeof event.meta !== 'string') {
+      event.meta = '';
+    }
+
+    const normalizedTime = normalizeTimeString(event.time);
+    if (normalizedTime) {
+      event.time = normalizedTime;
+    }
+
+    return event;
+  });
+}
+
+function parseTimeParts(time) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec((time || '').trim());
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+
+  return { hours, minutes };
+}
+
+function normalizeTimeString(time) {
+  const parts = parseTimeParts(time);
+  if (!parts) return null;
+  return `${String(parts.hours).padStart(2, '0')}:${String(parts.minutes).padStart(2, '0')}`;
+}
+
+function formatHourLabel(hour) {
+  return `${String(hour).padStart(2, '0')}:00`;
+}
+
+function getEventTopOffset(time) {
+  const parts = parseTimeParts(time);
+  if (!parts) return 0;
+  return (parts.hours * 60 + parts.minutes) * (DAY_SLOT_HEIGHT / 60);
+}
+
+function getSelectedPlanningEvent() {
+  return planningState.events.find(event => event.id === planningState.selectedEventId) || null;
+}
+
+function selectPlanningEvent(eventId) {
+  planningState.selectedEventId = eventId;
+  renderPlanningPanel();
+}
+
+function openPlanningDay(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return;
+
+  planningState.currentDate = new Date(year, month - 1, day);
+  planningState.view = 'day';
+  const dayEvents = planningState.events
+    .filter(event => event.date === dateKey)
+    .sort((a, b) => a.time.localeCompare(b.time));
+  planningState.selectedEventId = dayEvents[0]?.id || null;
+  renderPlanningPanel();
+}
+
+function renderDayAgenda(events) {
+  const agenda = document.getElementById('day-agenda-panel');
+  if (!agenda) return;
+
+  const hourRows = DAY_HOURS.map(hour => (
+    `<div class="agenda-hour">${formatHourLabel(hour)}</div><div class="agenda-slot" data-hour="${hour}"></div>`
+  )).join('');
+
+  const eventCards = events.map(event => {
+    const isActive = event.id === planningState.selectedEventId ? 'active' : '';
+    const top = getEventTopOffset(event.time);
+    const safeMeta = event.meta ? `<div class="agenda-meta">${event.meta}</div>` : '';
+    return `<button type="button" class="agenda-event ${isActive}" data-event-id="${event.id}" style="top: ${top}px; height: ${DAY_EVENT_HEIGHT}px;"><div class="agenda-event-time">${event.time}</div><div class="agenda-name">${event.title}</div>${safeMeta}</button>`;
+  }).join('');
+
+  const emptyState = events.length
+    ? ''
+    : '<div class="agenda-empty">Aucune tâche ce jour-là. Ajoute-en une pour la voir se placer dans la journée.</div>';
+
+  agenda.innerHTML = `<div class="day-agenda-scroll"><div class="day-agenda-grid">${hourRows}<div class="agenda-events-layer">${eventCards}</div>${emptyState}</div></div>`;
+
+  if (planningState.selectedEventId !== null) {
+    const selectedEvent = agenda.querySelector('.agenda-event.active');
+    const scrollContainer = agenda.querySelector('.day-agenda-scroll');
+    if (selectedEvent && scrollContainer) {
+      const targetTop = Math.max(0, selectedEvent.offsetTop - 140);
+      scrollContainer.scrollTop = targetTop;
+    }
+  }
+}
+
+function renderTaskEditor() {
+  const editor = document.getElementById('task-editor-panel');
+  const placeholder = document.getElementById('task-editor-placeholder');
+  const titleInput = document.getElementById('task-title-input');
+  const descriptionInput = document.getElementById('task-description-input');
+  if (!editor || !placeholder || !titleInput || !descriptionInput) return;
+
+  const selectedEvent = getSelectedPlanningEvent();
+  if (!selectedEvent || planningState.view !== 'day') {
+    editor.classList.add('hidden');
+    placeholder.style.display = 'block';
+    titleInput.value = '';
+    descriptionInput.value = '';
+    return;
+  }
+
+  editor.classList.remove('hidden');
+  placeholder.style.display = 'none';
+  titleInput.value = selectedEvent.title;
+  descriptionInput.value = selectedEvent.description;
+}
+
+function initializePlanningInteractions() {
+  const dayBtn = document.getElementById('view-day-btn-panel');
+  const monthBtn = document.getElementById('view-month-btn-panel');
+  const newTaskBtn = document.getElementById('btn-new-task');
+  const prevBtn = document.getElementById('planning-prev-panel');
+  const nextBtn = document.getElementById('planning-next-panel');
+  const agenda = document.getElementById('day-agenda-panel');
+  const monthGrid = document.getElementById('month-grid-panel');
+  const titleInput = document.getElementById('task-title-input');
+  const descriptionInput = document.getElementById('task-description-input');
+
+  if (!dayBtn || dayBtn._initialized) return;
+  dayBtn._initialized = true;
+
+  dayBtn.addEventListener('click', () => {
+    planningState.view = 'day';
+    renderPlanningPanel();
+  });
+
+  monthBtn.addEventListener('click', () => {
+    planningState.view = 'month';
+    renderPlanningPanel();
+  });
+
+  prevBtn.addEventListener('click', () => {
+    if (planningState.view === 'day') {
+      planningState.currentDate.setDate(planningState.currentDate.getDate() - 1);
+    } else {
+      planningState.currentDate.setMonth(planningState.currentDate.getMonth() - 1);
+    }
+    renderPlanningPanel();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (planningState.view === 'day') {
+      planningState.currentDate.setDate(planningState.currentDate.getDate() + 1);
+    } else {
+      planningState.currentDate.setMonth(planningState.currentDate.getMonth() + 1);
+    }
+    renderPlanningPanel();
+  });
+
+  newTaskBtn.addEventListener('click', () => {
+    const title = prompt('Titre de la tâche:');
+    if (!title) return;
+
+    const time = prompt('Heure (HH:mm):');
+    if (!parseTimeParts(time)) {
+      alert('Format invalide. Utilisez HH:mm');
+      return;
+    }
+
+    const key = formatDateKey(planningState.currentDate);
+    const newEvent = createPlanningEvent({ date: key, time, title, description: '', meta: '' });
+    planningState.events.push(newEvent);
+    planningState.selectedEventId = newEvent.id;
+    renderPlanningPanel();
+  });
+
+  agenda.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-event-id]');
+    if (!trigger) return;
+    selectPlanningEvent(Number(trigger.dataset.eventId));
+  });
+
+  monthGrid.addEventListener('click', (event) => {
+    const dayCell = event.target.closest('[data-date-key]');
+    if (!dayCell) return;
+    openPlanningDay(dayCell.dataset.dateKey);
+  });
+
+  titleInput.addEventListener('input', (event) => {
+    const selectedEvent = getSelectedPlanningEvent();
+    if (!selectedEvent) return;
+    selectedEvent.title = event.target.value;
+
+    const activeTitle = document.querySelector('.agenda-event.active .agenda-name');
+    if (activeTitle) {
+      activeTitle.textContent = selectedEvent.title || 'Sans titre';
+    }
+  });
+
+  descriptionInput.addEventListener('input', (event) => {
+    const selectedEvent = getSelectedPlanningEvent();
+    if (!selectedEvent) return;
+    selectedEvent.description = event.target.value;
+  });
+}
+
 function formatLongDate(date) {
   return date.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 }
@@ -534,6 +762,9 @@ function sameDay(a, b) {
 }
 
 function renderPlanningPanel() {
+  ensurePlanningEventsStructure();
+  initializePlanningInteractions();
+
   const dayBtn = document.getElementById('view-day-btn-panel');
   const monthBtn = document.getElementById('view-month-btn-panel');
   const newTaskBtn = document.getElementById('btn-new-task');
@@ -542,47 +773,6 @@ function renderPlanningPanel() {
   const prevBtn = document.getElementById('planning-prev-panel');
   const nextBtn = document.getElementById('planning-next-panel');
   const label = document.getElementById('planning-label-panel');
-
-  // Only set up listeners once
-  if (!dayBtn._initialized) {
-    dayBtn._initialized = true;
-    dayBtn.addEventListener('click', () => {
-      planningState.view = 'day';
-      renderPlanningPanel();
-    });
-    monthBtn.addEventListener('click', () => {
-      planningState.view = 'month';
-      renderPlanningPanel();
-    });
-    prevBtn.addEventListener('click', () => {
-      if (planningState.view === 'day') {
-        planningState.currentDate.setDate(planningState.currentDate.getDate() - 1);
-      } else {
-        planningState.currentDate.setMonth(planningState.currentDate.getMonth() - 1);
-      }
-      renderPlanningPanel();
-    });
-    nextBtn.addEventListener('click', () => {
-      if (planningState.view === 'day') {
-        planningState.currentDate.setDate(planningState.currentDate.getDate() + 1);
-      } else {
-        planningState.currentDate.setMonth(planningState.currentDate.getMonth() + 1);
-      }
-      renderPlanningPanel();
-    });
-    newTaskBtn.addEventListener('click', () => {
-      const title = prompt('Titre de la tâche:');
-      if (!title) return;
-      const time = prompt('Heure (HH:mm):');
-      if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-        alert('Format invalide. Utilisez HH:mm');
-        return;
-      }
-      const key = formatDateKey(planningState.currentDate);
-      planningState.events.push({date: key, time: time, title: title, meta: ''});
-      renderPlanningPanel();
-    });
-  }
 
   if (planningState.view === 'day') {
     dayBtn.classList.add('active');
@@ -593,19 +783,19 @@ function renderPlanningPanel() {
     
     const key = formatDateKey(planningState.currentDate);
     const events = planningState.events.filter(e => e.date === key).sort((a, b) => a.time.localeCompare(b.time));
-    const agenda = document.getElementById('day-agenda-panel');
-    
-    if (!events.length) {
-      agenda.innerHTML = `<div class="agenda-empty">Aucun événement</div>`;
-    } else {
-      agenda.innerHTML = events.map(e => `<div class="agenda-card"><div class="agenda-time">${e.time}</div><div class="agenda-main"><div class="agenda-name">${e.title}</div><div class="agenda-meta">${e.meta}</div></div></div>`).join('');
+    if (!events.some(event => event.id === planningState.selectedEventId)) {
+      planningState.selectedEventId = events[0]?.id || null;
     }
+
+    renderDayAgenda(events);
+    renderTaskEditor();
   } else {
     dayBtn.classList.remove('active');
     monthBtn.classList.add('active');
     dayView.style.display = 'none';
     monthView.style.display = 'block';
     label.textContent = formatMonthLabel(planningState.currentDate);
+    renderTaskEditor();
 
     const current = planningState.currentDate;
     const year = current.getFullYear();
@@ -634,7 +824,7 @@ function renderPlanningPanel() {
       const hasEvent = planningState.events.some(e => e.date === key);
       const todayClass = sameDay(cell.date, today) ? 'today' : '';
       const outsideClass = cell.outside ? 'outside' : '';
-      return `<div class="month-day ${outsideClass} ${todayClass}"><div class="month-day-number">${cell.date.getDate()}</div>${hasEvent ? '<div class="month-day-dot"></div>' : ''}</div>`;
+      return `<button type="button" class="month-day ${outsideClass} ${todayClass}" data-date-key="${key}"><div class="month-day-number">${cell.date.getDate()}</div>${hasEvent ? '<div class="month-day-dot"></div>' : ''}</button>`;
     }).join('');
 
     

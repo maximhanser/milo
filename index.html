@@ -50,12 +50,11 @@
   /* Status bar */
   .status-bar {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     padding: 16px 24px 8px;
     flex-shrink: 0;
   }
-  .status-time { font-size: 14px; font-weight: 500; opacity: 0.9; }
   .status-right { display: flex; gap: 6px; align-items: center; }
   .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text2); }
 
@@ -444,35 +443,95 @@
 
   /* Agenda */
   .day-agenda {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 0.5px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  .day-agenda-scroll {
+    position: relative;
+    height: 100%;
+    min-height: 520px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .day-agenda-scroll::-webkit-scrollbar { display: none; }
+
+  .day-agenda-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    min-height: 1728px;
+  }
+
+  .agenda-hour {
+    position: relative;
+    padding-top: 6px;
+    font-size: 11px;
+    color: var(--text2);
+    text-align: right;
+    padding-right: 12px;
+    height: 72px;
+  }
+
+  .agenda-slot {
+    position: relative;
+    height: 72px;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .agenda-slot::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 36px;
+    border-top: 0.5px dashed rgba(255,255,255,0.04);
+  }
+
+  .agenda-events-layer {
+    position: absolute;
+    top: 0;
+    left: 54px;
+    right: 0;
+    min-height: 1728px;
+    pointer-events: none;
+  }
+
+  .agenda-event {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    min-height: 54px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(124,109,240,0.28), rgba(124,109,240,0.18));
+    border: 0.5px solid rgba(124,109,240,0.38);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+    pointer-events: auto;
+    cursor: pointer;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    justify-content: center;
+    gap: 4px;
   }
 
-  .agenda-card {
-    background: var(--bg2);
-    border: 0.5px solid var(--border);
-    border-radius: 14px;
-    padding: 14px;
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
+  .agenda-event.active {
+    border-color: rgba(62,207,170,0.8);
+    box-shadow: 0 0 0 1px rgba(62,207,170,0.28), 0 12px 28px rgba(0,0,0,0.22);
   }
 
-  .agenda-time {
-    min-width: 58px;
-    font-size: 12px;
-    color: var(--text2);
-    padding-top: 2px;
+  .agenda-event-time {
+    font-size: 11px;
+    color: rgba(240,239,245,0.72);
   }
-
-  .agenda-main { flex: 1; }
 
   .agenda-name {
     font-size: 14px;
     color: var(--text);
     font-weight: 500;
-    margin-bottom: 3px;
   }
 
   .agenda-meta {
@@ -481,10 +540,72 @@
   }
 
   .agenda-empty {
+    position: absolute;
+    top: 18px;
+    left: 72px;
+    right: 18px;
     color: var(--text3);
-    text-align: center;
+    text-align: left;
     font-size: 13px;
-    padding: 28px 0;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 0.5px solid rgba(255,255,255,0.04);
+  }
+
+  .task-editor {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .task-editor.hidden {
+    display: none;
+  }
+
+  .task-editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+
+  .task-editor-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+  }
+
+  .task-editor-input,
+  .task-editor-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    resize: none;
+  }
+
+  .task-editor-input {
+    font-weight: 500;
+  }
+
+  .task-editor-textarea {
+    min-height: 104px;
+    line-height: 1.5;
+  }
+
+  .task-editor-placeholder {
+    color: var(--text3);
+    font-size: 13px;
+    padding: 14px 4px 0;
   }
 
   /* Month grid */
@@ -735,7 +856,6 @@
   <!-- PAGE: Home -->
   <div id="home-page">
   <div class="status-bar">
-    <span class="status-time" id="clock">09:41</span>
     <div class="status-right">
       <button class="settings-menu-btn" id="settings-menu-trigger" title="Menu">
         <span>•••</span>
@@ -843,7 +963,6 @@
   <!-- PAGE: Education -->
   <div id="education-page" style="display: none;">
   <div class="status-bar">
-    <span class="status-time" id="clock-education">09:41</span>
     <div class="status-right">
       <button class="settings-menu-btn" id="settings-menu-trigger-education" title="Menu">
         <span>•••</span>
@@ -928,6 +1047,17 @@
       </div>
       <div id="planning-day-view-panel">
         <div class="day-agenda" id="day-agenda-panel"></div>
+        <div class="task-editor hidden" id="task-editor-panel">
+          <div class="task-editor-field">
+            <div class="task-editor-label">Titre</div>
+            <input class="task-editor-input" id="task-title-input" placeholder="Titre de la tâche" />
+          </div>
+          <div class="task-editor-field">
+            <div class="task-editor-label">Description</div>
+            <textarea class="task-editor-textarea" id="task-description-input" placeholder="Ajouter une description"></textarea>
+          </div>
+        </div>
+        <div class="task-editor-placeholder" id="task-editor-placeholder">Touchez une tâche pour modifier son titre et sa description.</div>
       </div>
       <div id="planning-month-view-panel" style="display: none;">
         <div class="month-weekdays">
