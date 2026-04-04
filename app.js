@@ -58,6 +58,7 @@ const chatSessionStorageKey = 'milo.chatSessionId';
 let savedProfileSnapshot = null;
 let currentProfilePhotoData = '';
 let currentLanguage = 'fr';
+let isAgentRequestPending = false;
 
 const translations = {
   fr: {
@@ -926,9 +927,20 @@ function addMessageToHistory(role, text) {
   renderChatHistory();
 }
 
+function setAgentRequestPending(pending) {
+  isAgentRequestPending = pending;
+  if (sendBtn) sendBtn.disabled = pending;
+  if (textInput) textInput.disabled = pending;
+  if (miloBtn) miloBtn.disabled = pending;
+}
+
 sendBtn.addEventListener('click', sendFromInput);
 textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendFromInput(); });
 miloBtn.addEventListener('click', function() {
+  if (isAgentRequestPending) {
+    showToast(t('chatThinking'));
+    return;
+  }
   openPanelSection('chat');
   miloBtn.classList.add('listening');
   setPanelState('listening');
@@ -967,6 +979,10 @@ if (planningPanel) {
 // Voice recognition
 let recognition = null;
 function startListening() {
+  if (isAgentRequestPending) {
+    showToast(t('chatThinking'));
+    return;
+  }
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     showToast(t('toastSpeechUnavailable'));
     setPanelState('idle');
@@ -992,6 +1008,11 @@ function startListening() {
 }
 
 function sendFromInput() {
+  if (isAgentRequestPending) {
+    showToast(t('chatThinking'));
+    return;
+  }
+
   const v = textInput.value.trim();
   if (v) {
     openPanelSection('chat');
@@ -1034,7 +1055,9 @@ function getAgentRequestPayload(message) {
     planning: {
       view: planningState.view,
       currentDate: planningState.currentDate.toISOString(),
+      selectedEventId: planningState.selectedEventId,
       events: planningState.events.map(event => ({
+        id: event.id,
         date: event.date,
         time: event.time,
         title: event.title,
@@ -1049,33 +1072,63 @@ function applyAgentActions(actions = []) {
   if (!Array.isArray(actions) || actions.length === 0) return;
 
   actions.forEach((action) => {
-    if (action?.type !== 'add_planning_event' || !action.event) return;
+    if (!action?.event) return;
 
-    const existingEvent = planningState.events.find((event) => (
-      event.date === action.event.date
-      && event.time === action.event.time
-      && event.title === action.event.title
-      && event.description === (action.event.description || '')
-    ));
+    if (action.type === 'add_planning_event') {
+      const existingEvent = planningState.events.find((event) => (
+        event.date === action.event.date
+        && event.time === action.event.time
+        && event.title === action.event.title
+        && event.description === (action.event.description || '')
+      ));
 
-    if (existingEvent) {
-      planningState.selectedEventId = existingEvent.id;
+      if (existingEvent) {
+        planningState.selectedEventId = existingEvent.id;
+        return;
+      }
+
+      const createdEvent = createPlanningEvent({
+        date: action.event.date,
+        time: action.event.time,
+        title: action.event.title,
+        description: action.event.description || '',
+        meta: action.event.meta || 'Ajouté par Milo'
+      });
+
+      if (typeof action.event.id === 'number') {
+        createdEvent.id = action.event.id;
+        if (createdEvent.id >= planningState.nextEventId) {
+          planningState.nextEventId = createdEvent.id + 1;
+        }
+      }
+
+      planningState.events.push(createdEvent);
+      planningState.selectedEventId = createdEvent.id;
+
+      if (action.openPlanning && action.event.date) {
+        openPlanningDay(action.event.date);
+      }
       return;
     }
 
-    const createdEvent = createPlanningEvent({
-      date: action.event.date,
-      time: action.event.time,
-      title: action.event.title,
-      description: action.event.description || '',
-      meta: action.event.meta || 'Ajouté par Milo'
-    });
+    if (action.type === 'update_planning_event') {
+      const existingEvent = planningState.events.find((event) => (
+        (typeof action.eventId === 'number' && event.id === action.eventId)
+        || (typeof action.event.id === 'number' && event.id === action.event.id)
+      ));
 
-    planningState.events.push(createdEvent);
-    planningState.selectedEventId = createdEvent.id;
+      if (!existingEvent) return;
 
-    if (action.openPlanning && action.event.date) {
-      openPlanningDay(action.event.date);
+      existingEvent.title = action.event.title || existingEvent.title;
+      existingEvent.date = action.event.date || existingEvent.date;
+      existingEvent.time = action.event.time || existingEvent.time;
+      existingEvent.description = action.event.description ?? existingEvent.description;
+      existingEvent.meta = action.event.meta || existingEvent.meta;
+      planningState.selectedEventId = existingEvent.id;
+
+      if (action.openPlanning && existingEvent.date) {
+        openPlanningDay(existingEvent.date);
+      }
     }
   });
 
@@ -1083,6 +1136,11 @@ function applyAgentActions(actions = []) {
 }
 
 async function sendCommand(text, mode = 'text') {
+  if (isAgentRequestPending) {
+    return;
+  }
+
+  setAgentRequestPending(true);
   miloBtn.classList.add('thinking');
   setPanelState('thinking');
 
@@ -1100,6 +1158,7 @@ async function sendCommand(text, mode = 'text') {
     planningState.selectedEventId = reminderEvent.id;
     renderPlanningPanel();
     const confirm = t('reminderConfirm', { time: reminder.time, title: reminder.title });
+    setAgentRequestPending(false);
     miloBtn.classList.remove('thinking');
     setPanelState('idle');
     if (mode === 'text') {
@@ -1121,6 +1180,7 @@ async function sendCommand(text, mode = 'text') {
     const reply = data.reply || t('chatUnknown');
     applyAgentActions(data.actions);
 
+    setAgentRequestPending(false);
     miloBtn.classList.remove('thinking');
     setPanelState('idle');
 
@@ -1131,6 +1191,7 @@ async function sendCommand(text, mode = 'text') {
     }
   } catch (err) {
     console.error('Error in sendCommand:', err);
+    setAgentRequestPending(false);
     miloBtn.classList.remove('thinking');
     setPanelState('idle');
 

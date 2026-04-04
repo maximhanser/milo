@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,25 +18,44 @@ const sessionMemoryStore = new Map();
 
 function getAIProvider() {
   const explicitProvider = (process.env.AI_PROVIDER || process.env.PROVIDER || "").toLowerCase().trim();
+  if (explicitProvider === "gemini") return "gemini";
   if (explicitProvider === "xai") return "xai";
   if (explicitProvider === "openai") return "openai";
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return "gemini";
   if (process.env.XAI_API_KEY) return "xai";
   return "openai";
 }
 
 function getAIProviderLabel() {
-  return getAIProvider() === "xai" ? "Grok" : "OpenAI";
+  const provider = getAIProvider();
+  if (provider === "gemini") return "Gemini";
+  if (provider === "xai") return "Grok";
+  return "OpenAI";
 }
 
 function getAIKeyEnvName() {
-  return getAIProvider() === "xai" ? "XAI_API_KEY" : "OPENAI_API_KEY";
+  const provider = getAIProvider();
+  if (provider === "gemini") {
+    return "GEMINI_API_KEY ou GOOGLE_API_KEY";
+  }
+
+  return provider === "xai" ? "XAI_API_KEY" : "OPENAI_API_KEY";
 }
 
 function getAIKey() {
-  return process.env[getAIKeyEnvName()];
+  if (getAIProvider() === "gemini") {
+    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+  }
+
+  const envName = getAIKeyEnvName();
+  return process.env[envName] || "";
 }
 
 function getAIModel() {
+  if (getAIProvider() === "gemini") {
+    return process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  }
+
   if (getAIProvider() === "xai") {
     return process.env.XAI_MODEL || "grok-4-0709";
   }
@@ -49,6 +68,10 @@ function createAIClient() {
   const options = {
     apiKey: getAIKey()
   };
+
+  if (provider === "gemini") {
+    options.baseURL = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/";
+  }
 
   if (provider === "xai") {
     options.baseURL = process.env.XAI_BASE_URL || "https://api.x.ai/v1";
@@ -63,6 +86,7 @@ function getAssistantSystemPrompt() {
     "Ton rôle est de comprendre la demande réelle de l'utilisateur, même si elle est vague, puis d'agir avec les outils disponibles quand cela est utile.",
     "Réponds dans la langue de l'utilisateur.",
     "Quand la demande concerne le planning, consulte le planning puis utilise l'outil d'ajout si nécessaire au lieu de juste décrire quoi faire.",
+    "Quand l'utilisateur demande de renommer, modifier ou déplacer un rappel existant, mets à jour l'événement existant au lieu d'en créer un nouveau.",
     "Quand une information durable sur l'utilisateur apparaît, tu peux l'enregistrer en mémoire avec l'outil adapté.",
     "Quand une question nécessite des informations récentes ou externes, utilise la recherche web.",
     "Sois concret, exact et utile."
@@ -104,9 +128,11 @@ function sanitizePlanning(planning = {}) {
   return {
     view: planning.view === "month" ? "month" : "day",
     currentDate: typeof planning.currentDate === "string" ? planning.currentDate : new Date().toISOString(),
+    selectedEventId: typeof planning.selectedEventId === "number" ? planning.selectedEventId : null,
     events: events
       .filter(event => event && typeof event.title === "string")
       .map(event => ({
+        id: typeof event.id === "number" ? event.id : null,
         date: typeof event.date === "string" ? event.date : "",
         time: typeof event.time === "string" ? event.time : "",
         title: event.title,
@@ -166,6 +192,7 @@ function getMemorySnapshot(sessionId) {
 function buildContextMessage({ language, profile, planning, sessionId }) {
   const memory = getMemorySnapshot(sessionId);
   const upcomingEvents = planning.events.slice(0, 12).map(event => ({
+    id: event.id,
     date: event.date,
     time: event.time,
     title: event.title,
@@ -178,10 +205,42 @@ function buildContextMessage({ language, profile, planning, sessionId }) {
     planning: {
       view: planning.view,
       currentDate: planning.currentDate,
+      selectedEventId: planning.selectedEventId,
       upcomingEvents
     },
     memory
   });
+}
+
+function getNextPlanningEventId(planning) {
+  const maxId = planning.events.reduce((currentMax, event) => {
+    if (typeof event.id !== "number") return currentMax;
+    return Math.max(currentMax, event.id);
+  }, 0);
+
+  return maxId + 1;
+}
+
+function findPlanningEvent(planning, { eventId = null, title = "", date = "", time = "" }) {
+  if (typeof eventId === "number") {
+    return planning.events.find(event => event.id === eventId) || null;
+  }
+
+  const normalizedTitle = typeof title === "string" ? title.trim().toLowerCase() : "";
+  const normalizedDate = typeof date === "string" ? date.trim() : "";
+  const normalizedTime = typeof time === "string" ? time.trim() : "";
+  const matches = planning.events.filter((event) => {
+    if (normalizedTitle && event.title.trim().toLowerCase() !== normalizedTitle) return false;
+    if (normalizedDate && event.date !== normalizedDate) return false;
+    if (normalizedTime && event.time !== normalizedTime) return false;
+    return normalizedTitle || normalizedDate || normalizedTime;
+  });
+
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  return null;
 }
 
 function parseJsonArguments(rawArguments) {
@@ -200,6 +259,65 @@ function isValidDateKey(date) {
 
 function isValidTimeKey(time) {
   return /^\d{2}:\d{2}$/.test(time || "");
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRateLimitError(error) {
+  const rawMessage = typeof error?.message === "string"
+    ? error.message.toLowerCase()
+    : typeof error?.error === "string"
+      ? error.error.toLowerCase()
+      : "";
+
+  return error?.status === 429
+    || error?.code === "insufficient_quota"
+    || rawMessage.includes("rate limit")
+    || rawMessage.includes("too many requests")
+    || rawMessage.includes("resource_exhausted")
+    || rawMessage.includes("quota");
+}
+
+function getModelCandidates(model) {
+  if (getAIProvider() !== "gemini") {
+    return [model];
+  }
+
+  const fallbackModels = [
+    model,
+    "gemini-2.5-flash"
+  ];
+
+  return [...new Set(fallbackModels.filter(Boolean))];
+}
+
+async function createChatCompletionWithRetry(client, payload, maxAttempts = 3) {
+  let lastError = null;
+
+  for (const candidateModel of getModelCandidates(payload.model)) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await client.chat.completions.create({
+          ...payload,
+          model: candidateModel
+        });
+      } catch (error) {
+        lastError = error;
+        if (!isRateLimitError(error)) {
+          throw error;
+        }
+
+        if (attempt < maxAttempts) {
+          await delay(1200 * attempt);
+          continue;
+        }
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 async function searchWeb(query) {
@@ -285,6 +403,27 @@ function getAgentTools() {
     {
       type: "function",
       function: {
+        name: "update_planning_event",
+        description: "Modifie un événement existant du planning, par exemple pour changer son nom, son heure, sa date ou sa description.",
+        parameters: {
+          type: "object",
+          properties: {
+            eventId: { type: "number", description: "Identifiant de l'événement à modifier si connu" },
+            currentTitle: { type: "string", description: "Titre actuel de l'événement à retrouver" },
+            currentDate: { type: "string", description: "Date actuelle au format YYYY-MM-DD pour aider à cibler l'événement" },
+            currentTime: { type: "string", description: "Heure actuelle au format HH:mm pour aider à cibler l'événement" },
+            newTitle: { type: "string", description: "Nouveau titre de l'événement" },
+            newDate: { type: "string", description: "Nouvelle date au format YYYY-MM-DD" },
+            newTime: { type: "string", description: "Nouvelle heure au format HH:mm" },
+            newDescription: { type: "string", description: "Nouvelle description" }
+          },
+          additionalProperties: false
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "save_memory_note",
         description: "Enregistre une préférence ou un fait durable utile sur l'utilisateur.",
         parameters: {
@@ -346,12 +485,16 @@ async function executeAgentTool(toolName, args, runtime) {
       }
 
       const event = {
+        id: getNextPlanningEventId(runtime.planning),
         date,
         time,
         title,
         description,
         meta: "Ajouté par Milo"
       };
+
+      runtime.planning.events.push(event);
+      runtime.planning.selectedEventId = event.id;
 
       runtime.actions.push({
         type: "add_planning_event",
@@ -360,6 +503,58 @@ async function executeAgentTool(toolName, args, runtime) {
       });
 
       return { ok: true, event };
+    }
+    case "update_planning_event": {
+      const eventId = typeof args.eventId === "number" ? args.eventId : null;
+      const currentTitle = typeof args.currentTitle === "string" ? args.currentTitle.trim() : "";
+      const currentDate = typeof args.currentDate === "string" ? args.currentDate.trim() : "";
+      const currentTime = typeof args.currentTime === "string" ? args.currentTime.trim() : "";
+      const newTitle = typeof args.newTitle === "string" ? args.newTitle.trim() : "";
+      const newDate = typeof args.newDate === "string" ? args.newDate.trim() : "";
+      const newTime = typeof args.newTime === "string" ? args.newTime.trim() : "";
+      const newDescription = typeof args.newDescription === "string" ? args.newDescription : undefined;
+
+      const existingEvent = findPlanningEvent(runtime.planning, {
+        eventId,
+        title: currentTitle,
+        date: currentDate,
+        time: currentTime
+      });
+
+      if (!existingEvent) {
+        return { ok: false, error: "Planning event not found" };
+      }
+
+      if (newDate && !isValidDateKey(newDate)) {
+        return { ok: false, error: "Invalid new date" };
+      }
+
+      if (newTime && !isValidTimeKey(newTime)) {
+        return { ok: false, error: "Invalid new time" };
+      }
+
+      const updatedEvent = {
+        ...existingEvent,
+        title: newTitle || existingEvent.title,
+        date: newDate || existingEvent.date,
+        time: newTime || existingEvent.time,
+        description: newDescription ?? existingEvent.description
+      };
+
+      const eventIndex = runtime.planning.events.findIndex(event => event.id === existingEvent.id);
+      if (eventIndex !== -1) {
+        runtime.planning.events[eventIndex] = updatedEvent;
+      }
+      runtime.planning.selectedEventId = updatedEvent.id;
+
+      runtime.actions.push({
+        type: "update_planning_event",
+        eventId: updatedEvent.id,
+        event: updatedEvent,
+        openPlanning: true
+      });
+
+      return { ok: true, event: updatedEvent };
     }
     case "save_memory_note":
       return rememberNote(runtime.sessionId, args.note);
@@ -391,7 +586,7 @@ async function runAgentCompletion({ client, model, message, history, language, p
   let finalReply = null;
 
   for (let step = 0; step < 6; step += 1) {
-    const response = await client.chat.completions.create({
+    const response = await createChatCompletionWithRetry(client, {
       model,
       messages,
       tools,
@@ -453,8 +648,20 @@ function getAssistantErrorReply(error) {
     return `La clé ${providerLabel} est invalide. Remplace ${keyEnvName} par une vraie clé API générée depuis la console du provider.`;
   }
 
+  if (rawMessage.includes("API key not valid") || rawMessage.includes("invalid API key") || rawMessage.includes("API_KEY_INVALID")) {
+    return `La clé ${providerLabel} est invalide. Vérifie ${keyEnvName} dans le fichier .env.`;
+  }
+
   if (rawMessage.includes("does not have permission to execute the specified operation") || rawMessage.includes("doesn't have any credits or licenses yet")) {
     return `Le compte ${providerLabel} est bien connecté, mais cette équipe n'a pas encore de crédits ou de licence active. Active la facturation dans la console xAI puis réessaie.`;
+  }
+
+  if (rawMessage.includes("PERMISSION_DENIED") || rawMessage.includes("SERVICE_DISABLED") || rawMessage.includes("API has not been used") || rawMessage.includes("Generative Language API")) {
+    return `Le compte ${providerLabel} n'est pas autorisé à utiliser l'API pour ce projet. Vérifie l'activation de l'API Gemini et les autorisations du projet Google AI Studio.`;
+  }
+
+  if (rawMessage.includes("RESOURCE_EXHAUSTED") || rawMessage.includes("quota") || rawMessage.includes("rate limit")) {
+    return `Le quota ${providerLabel} est atteint ou limité pour le moment. Réessaie plus tard ou augmente les quotas du projet.`;
   }
 
   if (error?.code === "insufficient_quota" || (error?.status === 429 && error?.type === "insufficient_quota")) {
