@@ -1,245 +1,308 @@
-// Panel management
-let panelOpen = false;
-let chatHistory = [];
-let currentPanelSection = 'chat';
-const DAY_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
-const DAY_SLOT_HEIGHT = 72;
-const DAY_EVENT_HEIGHT = 56;
-let planningState = {
-  view: 'day',
-  currentDate: new Date(),
-  events: [],
-  selectedEventId: null,
-  nextEventId: 1
-};
+    // Panel management
+    let panelOpen = false;
+    let chatHistory = [];
+    let educationChatHistory = [];
+    let currentPanelSection = 'chat';
+    const DAY_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+    const DAY_SLOT_HEIGHT = 72;
+    const DAY_EVENT_HEIGHT = 56;
+    let planningState = {
+      view: 'day',
+      currentDate: new Date(),
+      events: [],
+      selectedEventId: null,
+      nextEventId: 1
+    };
 
-const panel = document.getElementById('panel');
-const panelHandle = document.getElementById('panel-handle');
-const chatPanel = document.getElementById('panel-chat');
-const planningPanel = document.getElementById('panel-planning');
-const miloBtnWrap = document.querySelector('.milo-btn-wrap');
-const miloBtn = document.getElementById('milo-btn');
-const textInput = document.getElementById('text-input');
-const sendBtn = document.getElementById('send-btn');
-const chatHistoryEl = document.getElementById('chat-history');
-const panelLabel = document.getElementById('panel-label');
-const panelDragState = {
-  active: false,
-  pointerId: null,
-  captureTarget: null,
-  startY: 0,
-  startX: 0,
-  deltaY: 0,
-  dragging: false,
-  requireActivation: false
-};
+    const panel = document.getElementById('panel');
+    const panelHandle = document.getElementById('panel-handle');
+    const chatPanel = document.getElementById('panel-chat');
+    const educationChatPanel = document.getElementById('panel-education-chat');
+    const planningPanel = document.getElementById('panel-planning');
+    const miloBtnWrap = document.querySelector('.milo-btn-wrap');
+    const miloBtn = document.getElementById('milo-btn');
+    const textInput = document.getElementById('text-input');
+    const sendBtn = document.getElementById('send-btn');
+    const chatHistoryEl = document.getElementById('chat-history');
+    const educationTextInput = document.getElementById('education-text-input');
+    const educationSendBtn = document.getElementById('education-send-btn');
+    const educationChatHistoryEl = document.getElementById('education-chat-history');
+    const panelLabel = document.getElementById('panel-label');
+    const educationPanelLabel = document.getElementById('education-panel-label');
+    const educationFilesToggle = document.getElementById('education-files-toggle');
+    const educationUploadPanel = document.getElementById('education-upload-panel');
+    const educationDropzone = document.getElementById('education-dropzone');
+    const educationChatFilesList = document.getElementById('education-chat-files-list');
+    const educationFilesCount = document.getElementById('education-files-count');
+    const educationClearFilesBtn = document.getElementById('education-clear-files-btn');
+    const educationDocumentInput = document.getElementById('education-document-input');
+    const educationSourceTextArea = document.getElementById('education-source-text');
+    const clearDocBtn = document.getElementById('clear-doc-btn');
+    const panelDragState = {
+      active: false,
+      pointerId: null,
+      captureTarget: null,
+      startY: 0,
+      startX: 0,
+      deltaY: 0,
+      dragging: false,
+      requireActivation: false
+    };
 
-// Settings menu
-const settingsMenu = document.getElementById('settings-menu');
-const settingsMenuTrigger = document.getElementById('settings-menu-trigger');
-const settingsMenuTriggerAvatar = document.getElementById('settings-menu-trigger-avatar');
-const settingsMenuTriggerEducation = document.getElementById('settings-menu-trigger-education');
-const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
-const settingsMenuClose = document.getElementById('settings-menu-close');
-const themeToggle = document.getElementById('theme-toggle');
-const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
-const avatarImages = document.querySelectorAll('.profile-avatar-image');
-const profileFirstNameInput = document.getElementById('profile-first-name');
-const profileEmailInput = document.getElementById('profile-email');
-const profilePhoneInput = document.getElementById('profile-phone');
-const profileLanguageSelect = document.getElementById('profile-language');
-const profileAccountTypeSelect = document.getElementById('profile-account-type');
-const profilePhotoButton = document.getElementById('profile-photo-button');
-const profilePhotoRemoveButton = document.getElementById('profile-photo-remove');
-const profilePhotoInput = document.getElementById('profile-photo-input');
-const profileSaveButton = document.getElementById('profile-save-btn');
-const profileStorageKey = 'milo.profile';
-const chatSessionStorageKey = 'milo.chatSessionId';
-let savedProfileSnapshot = null;
-let currentProfilePhotoData = '';
-let currentLanguage = 'fr';
-let isAgentRequestPending = false;
+    // Settings menu
+    const settingsMenu = document.getElementById('settings-menu');
+    const settingsMenuTrigger = document.getElementById('settings-menu-trigger');
+    const settingsMenuTriggerAvatar = document.getElementById('settings-menu-trigger-avatar');
+    const settingsMenuTriggerEducation = document.getElementById('settings-menu-trigger-education');
+    const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
+    const settingsMenuClose = document.getElementById('settings-menu-close');
+    const themeToggle = document.getElementById('theme-toggle');
+    const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
+    const avatarImages = document.querySelectorAll('.profile-avatar-image');
+    const profileFirstNameInput = document.getElementById('profile-first-name');
+    const profileEmailInput = document.getElementById('profile-email');
+    const profilePhoneInput = document.getElementById('profile-phone');
+    const profileLanguageSelect = document.getElementById('profile-language');
+    const profileAccountTypeSelect = document.getElementById('profile-account-type');
+    const profilePhotoButton = document.getElementById('profile-photo-button');
+    const profilePhotoRemoveButton = document.getElementById('profile-photo-remove');
+    const profilePhotoInput = document.getElementById('profile-photo-input');
+    const profileSaveButton = document.getElementById('profile-save-btn');
+    const profileStorageKey = 'milo.profile';
+    const chatSessionStorageKey = 'milo.chatSessionId';
+    const educationDocumentsStorageKey = 'milo.educationDocuments';
+    const educationSourceStorageKey = 'milo.educationSourceText';
+    let savedProfileSnapshot = null;
+    let currentProfilePhotoData = '';
+    let currentLanguage = 'fr';
+    let isAgentRequestPending = false;
+    let isEducationAgentRequestPending = false;
+    let isEducationUploadPanelOpen = false;
+    let educationDocuments = [];
+    let selectedEducationDocumentId = null;
 
-const translations = {
-  fr: {
-    navHome: 'Accueil',
-    navPlanning: 'Planning',
-    navEducation: 'Éducation',
-    navProgress: 'Progress',
-    homeToday: 'Aujourd\'hui',
-    homeTomorrow: 'Demain',
-    homeCard1Title: 'Révision — Maths',
-    homeCard1Sub: '14h00 · 45 min',
-    homeCard1Badge: 'Planifié par Milo',
-    homeCard2Title: 'Courses à faire',
-    homeCard2Sub: 'Lait, pain, tomates…',
-    homeCard2Badge: 'Rappel 18h00',
-    homeCard3Title: 'Sport — Running',
-    homeCard3Sub: '07h30 · 30 min',
-    homeCard3Badge: 'Objectif semaine',
-    homeCard4Title: 'Révision — Histoire',
-    homeCard4Sub: '19h00 · 1h',
-    homeCard4Badge: 'Planifié par Milo',
-    progressTitle: 'Progress',
-    profileTitle: 'Profil',
-    profileHeroTitle: 'Ton espace personnel',
-    profileHeroSubtitle: 'Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.',
-    profileSection: 'Profil',
-    profileFirstName: 'Prénom',
-    profileEmail: 'Email',
-    profilePhone: 'Téléphone',
-    profilePhoto: 'Photo de profil',
-    profilePhotoName: 'Photo actuelle',
-    profilePhotoHelp: 'JPEG ou PNG uniquement',
-    profileImport: 'Importer',
-    profileRemove: 'Retirer',
-    profilePreferences: 'Préférences',
-    profileLanguage: 'Langue',
-    profileAccount: 'Compte',
-    languageOptionFr: 'Français',
-    languageOptionEn: 'English',
-    languageOptionEs: 'Español',
-    accountPersonal: 'Personnel',
-    accountStudent: 'Étudiant',
-    accountProfessional: 'Professionnel',
-    profileSave: 'Enregistrer',
-    educationTitle: 'Éducation',
-    educationWelcome: 'Bienvenue dans Éducation',
-    educationCardTitle: 'Utilisez la barre latérale pour accéder aux fonctionnalités',
-    educationCardSub: 'Chat IA pour poser des questions sur vos documents',
-    settingsTitle: 'Paramètres',
-    settingsTheme: 'Thème',
-    settingsPreferences: 'Préférences',
-    chatEmpty: 'Aucun échange pour le moment',
-    chatIdle: 'Écris un message ou parle à Milo',
-    chatListening: 'J\'écoute…',
-    chatThinking: 'Milo réfléchit…',
-    chatPlaceholder: 'Écris à Milo…',
-    planningDay: 'Jour',
-    planningMonth: 'Mois',
-    planningNewTask: '+ Nouvelle tâche',
-    taskTitle: 'Titre',
-    taskDescription: 'Description',
-    taskTitlePlaceholder: 'Titre de la tâche',
-    taskDescriptionPlaceholder: 'Ajouter une description',
-    taskPlaceholder: 'Touchez une tâche pour modifier son titre et sa description.',
-    weekday1: 'Lun', weekday2: 'Mar', weekday3: 'Mer', weekday4: 'Jeu', weekday5: 'Ven', weekday6: 'Sam', weekday7: 'Dim',
-    createFolder: 'Créer dossier',
-    uploadDocument: 'Télécharger document',
-    documentsEmpty: 'Aucun document ou dossier',
-    settingsDev: 'Paramètres en développement',
-    avatarAlt: 'Photo de profil',
-    avatarPreviewAlt: 'Aperçu photo de profil',
-    panelChat: 'Milo',
-    panelPlanning: 'Planning',
-    panelDocuments: 'Documents',
-    panelSettings: 'Paramètres',
-    toastLight: 'Mode clair activé',
-    toastDark: 'Mode sombre activé',
-    toastProfileSaved: 'Profil enregistré',
-    toastImportImage: 'Importe un fichier JPEG ou PNG',
-    toastSpeechUnavailable: 'La reconnaissance vocale n\'est pas disponible.',
-    chatUnknown: 'Je n\'ai pas compris.',
-    errorServerPrefix: 'Erreur serveur : ',
-    reminderDefaultTitle: 'Rappel',
-    reminderConfirm: 'Très bien, je vais ajouter un rappel à {time} pour : {title}',
-    voiceAddedMeta: 'Ajouté par commande vocale',
-    noTasksToday: 'Aucune tâche ce jour-là. Ajoute-en une pour la voir se placer dans la journée.',
-    promptTaskTitle: 'Titre de la tâche:',
-    promptTaskTime: 'Heure (HH:mm):',
-    promptTimeInvalid: 'Format invalide. Utilisez HH:mm',
-    untitledTask: 'Sans titre'
-  },
-  en: {
-    navHome: 'Home',
-    navPlanning: 'Planning',
-    navEducation: 'Education',
-    navProgress: 'Progress',
-    homeToday: 'Today',
-    homeTomorrow: 'Tomorrow',
-    homeCard1Title: 'Study session — Math',
-    homeCard1Sub: '2:00 PM · 45 min',
-    homeCard1Badge: 'Planned by Milo',
-    homeCard2Title: 'Groceries to buy',
-    homeCard2Sub: 'Milk, bread, tomatoes…',
-    homeCard2Badge: 'Reminder 6:00 PM',
-    homeCard3Title: 'Workout — Running',
-    homeCard3Sub: '7:30 AM · 30 min',
-    homeCard3Badge: 'Weekly goal',
-    homeCard4Title: 'Study session — History',
-    homeCard4Sub: '7:00 PM · 1h',
-    homeCard4Badge: 'Planned by Milo',
-    progressTitle: 'Progress',
-    profileTitle: 'Profile',
-    profileHeroTitle: 'Your personal space',
-    profileHeroSubtitle: 'Find your main profile information here in a full dedicated page, just like Education.',
-    profileSection: 'Profile',
-    profileFirstName: 'First name',
-    profileEmail: 'Email',
-    profilePhone: 'Phone',
-    profilePhoto: 'Profile photo',
-    profilePhotoName: 'Current photo',
-    profilePhotoHelp: 'JPEG or PNG only',
-    profileImport: 'Import',
-    profileRemove: 'Remove',
-    profilePreferences: 'Preferences',
-    profileLanguage: 'Language',
-    profileAccount: 'Account',
-    languageOptionFr: 'French',
-    languageOptionEn: 'English',
-    languageOptionEs: 'Spanish',
-    accountPersonal: 'Personal',
-    accountStudent: 'Student',
-    accountProfessional: 'Professional',
-    profileSave: 'Save',
-    educationTitle: 'Education',
-    educationWelcome: 'Welcome to Education',
-    educationCardTitle: 'Use the sidebar to access features',
-    educationCardSub: 'AI chat to ask questions about your documents',
-    settingsTitle: 'Settings',
-    settingsTheme: 'Theme',
-    settingsPreferences: 'Preferences',
-    chatEmpty: 'No conversation yet',
-    chatIdle: 'Type a message or speak to Milo',
-    chatListening: 'I\'m listening…',
-    chatThinking: 'Milo is thinking…',
-    chatPlaceholder: 'Write to Milo…',
-    planningDay: 'Day',
-    planningMonth: 'Month',
-    planningNewTask: '+ New task',
-    taskTitle: 'Title',
-    taskDescription: 'Description',
-    taskTitlePlaceholder: 'Task title',
-    taskDescriptionPlaceholder: 'Add a description',
-    taskPlaceholder: 'Tap a task to edit its title and description.',
-    weekday1: 'Mon', weekday2: 'Tue', weekday3: 'Wed', weekday4: 'Thu', weekday5: 'Fri', weekday6: 'Sat', weekday7: 'Sun',
-    createFolder: 'Create folder',
-    uploadDocument: 'Upload document',
-    documentsEmpty: 'No document or folder',
-    settingsDev: 'Settings under development',
-    avatarAlt: 'Profile photo',
-    avatarPreviewAlt: 'Profile photo preview',
-    panelChat: 'Milo',
-    panelPlanning: 'Planning',
-    panelDocuments: 'Documents',
-    panelSettings: 'Settings',
-    toastLight: 'Light mode enabled',
-    toastDark: 'Dark mode enabled',
-    toastProfileSaved: 'Profile saved',
-    toastImportImage: 'Import a JPEG or PNG file',
-    toastSpeechUnavailable: 'Voice recognition is not available.',
-    chatUnknown: "I didn't understand.",
-    errorServerPrefix: 'Server error: ',
-    reminderDefaultTitle: 'Reminder',
-    reminderConfirm: 'Okay, I will add a reminder at {time} for: {title}',
-    voiceAddedMeta: 'Added by voice command',
-    noTasksToday: 'No tasks for this day. Add one to place it in your schedule.',
-    promptTaskTitle: 'Task title:',
-    promptTaskTime: 'Time (HH:mm):',
-    promptTimeInvalid: 'Invalid format. Use HH:mm',
-    untitledTask: 'Untitled'
-  }
-};
+    const translations = {
+      fr: {
+        navHome: 'Accueil',
+        navPlanning: 'Planning',
+        navEducation: 'Éducation',
+        navProgress: 'Progress',
+        homeToday: 'Aujourd\'hui',
+        homeTomorrow: 'Demain',
+        homeCard1Title: 'Révision — Maths',
+        homeCard1Sub: '14h00 · 45 min',
+        homeCard1Badge: 'Planifié par Milo',
+        homeCard2Title: 'Courses à faire',
+        homeCard2Sub: 'Lait, pain, tomates…',
+        homeCard2Badge: 'Rappel 18h00',
+        homeCard3Title: 'Sport — Running',
+        homeCard3Sub: '07h30 · 30 min',
+        homeCard3Badge: 'Objectif semaine',
+        homeCard4Title: 'Révision — Histoire',
+        homeCard4Sub: '19h00 · 1h',
+        homeCard4Badge: 'Planifié par Milo',
+        progressTitle: 'Progress',
+        profileTitle: 'Profil',
+        profileHeroTitle: 'Ton espace personnel',
+        profileHeroSubtitle: 'Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.',
+        profileSection: 'Profil',
+        profileFirstName: 'Prénom',
+        profileEmail: 'Email',
+        profilePhone: 'Téléphone',
+        profilePhoto: 'Photo de profil',
+        profilePhotoName: 'Photo actuelle',
+        profilePhotoHelp: 'JPEG ou PNG uniquement',
+        profileImport: 'Importer',
+        profileRemove: 'Retirer',
+        profilePreferences: 'Préférences',
+        profileLanguage: 'Langue',
+        profileAccount: 'Compte',
+        languageOptionFr: 'Français',
+        languageOptionEn: 'English',
+        languageOptionEs: 'Español',
+        accountPersonal: 'Personnel',
+        accountStudent: 'Étudiant',
+        accountProfessional: 'Professionnel',
+        profileSave: 'Enregistrer',
+        educationTitle: 'Éducation',
+        educationWelcome: 'Bienvenue dans Éducation',
+        educationCardTitle: 'Utilisez la barre latérale pour accéder aux fonctionnalités',
+        educationCardSub: 'Chat IA pour poser des questions sur vos documents',
+        educationChatButton: 'Chat IA',
+        educationDocumentsButton: 'Documents',
+        educationChatEmpty: 'Aucun échange pour le moment',
+        educationChatIdle: 'Colle un texte ou choisis un document puis demande une fiche, une reformulation ou un quiz.',
+        educationChatThinking: 'Milo Éducation prépare ta réponse…',
+        educationChatPlaceholder: 'Demande une fiche, un quiz ou une reformulation…',
+        educationFilesToggleLabel: 'Ajouter des fichiers',
+        educationDropzoneTitle: 'Dépose jusqu\'à 3 fichiers',
+        educationDropzoneHelp: 'TXT, MD, CSV ou JSON. Tu peux ensuite ajouter une consigne dans le chat.',
+        educationFilesCount: '{count}/3 fichiers',
+        educationFilesEmpty: 'Aucun fichier ajouté',
+        educationClearFiles: 'Vider les fichiers',
+        educationFilesLimit: 'Tu peux ajouter jusqu\'à 3 fichiers maximum.',
+        educationPasteLabel: 'Texte de travail',
+        educationSourcePlaceholder: 'Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz.',
+        educationDocumentsHelp: 'Importe un document texte ou colle un passage. Le chat IA d\'Éducation utilisera ce contenu comme base de travail.',
+        clearText: 'Effacer le texte',
+        educationNoSource: 'Ajoute un texte ou sélectionne un document avant de lancer une consigne d\'étude.',
+        unsupportedDocument: 'Importe un document texte (.txt, .md, .csv ou .json).',
+        importedDocumentMeta: '{count} caractères',
+        settingsTitle: 'Paramètres',
+        settingsTheme: 'Thème',
+        settingsPreferences: 'Préférences',
+        chatEmpty: 'Aucun échange pour le moment',
+        chatIdle: 'Écris un message ou parle à Milo',
+        chatListening: 'J\'écoute…',
+        chatThinking: 'Milo réfléchit…',
+        chatPlaceholder: 'Écris à Milo…',
+        planningDay: 'Jour',
+        planningMonth: 'Mois',
+        planningNewTask: '+ Nouvelle tâche',
+        taskTitle: 'Titre',
+        taskDescription: 'Description',
+        taskTitlePlaceholder: 'Titre de la tâche',
+        taskDescriptionPlaceholder: 'Ajouter une description',
+        taskPlaceholder: 'Touchez une tâche pour modifier son titre et sa description.',
+        weekday1: 'Lun', weekday2: 'Mar', weekday3: 'Mer', weekday4: 'Jeu', weekday5: 'Ven', weekday6: 'Sam', weekday7: 'Dim',
+        createFolder: 'Créer dossier',
+        uploadDocument: 'Télécharger document',
+        documentsEmpty: 'Aucun document ou dossier',
+        settingsDev: 'Paramètres en développement',
+        avatarAlt: 'Photo de profil',
+        avatarPreviewAlt: 'Aperçu photo de profil',
+        panelChat: 'Milo',
+        panelEducationChat: 'Milo Éducation',
+        panelPlanning: 'Planning',
+        panelDocuments: 'Documents',
+        panelSettings: 'Paramètres',
+        toastLight: 'Mode clair activé',
+        toastDark: 'Mode sombre activé',
+        toastProfileSaved: 'Profil enregistré',
+        toastImportImage: 'Importe un fichier JPEG ou PNG',
+        toastSpeechUnavailable: 'La reconnaissance vocale n\'est pas disponible.',
+        chatUnknown: 'Je n\'ai pas compris.',
+        errorServerPrefix: 'Erreur serveur : ',
+        reminderDefaultTitle: 'Rappel',
+        reminderConfirm: 'Très bien, je vais ajouter un rappel à {time} pour : {title}',
+        voiceAddedMeta: 'Ajouté par commande vocale',
+        noTasksToday: 'Aucune tâche ce jour-là. Ajoute-en une pour la voir se placer dans la journée.',
+        promptTaskTitle: 'Titre de la tâche:',
+        promptTaskTime: 'Heure (HH:mm):',
+        promptTimeInvalid: 'Format invalide. Utilisez HH:mm',
+        untitledTask: 'Sans titre'
+      },
+      en: {
+        navHome: 'Home',
+        navPlanning: 'Planning',
+        navEducation: 'Education',
+        navProgress: 'Progress',
+        homeToday: 'Today',
+        homeTomorrow: 'Tomorrow',
+        homeCard1Title: 'Study session — Math',
+        homeCard1Sub: '2:00 PM · 45 min',
+        homeCard1Badge: 'Planned by Milo',
+        homeCard2Title: 'Groceries to buy',
+        homeCard2Sub: 'Milk, bread, tomatoes…',
+        homeCard2Badge: 'Reminder 6:00 PM',
+        homeCard3Title: 'Workout — Running',
+        homeCard3Sub: '7:30 AM · 30 min',
+        homeCard3Badge: 'Weekly goal',
+        homeCard4Title: 'Study session — History',
+        homeCard4Sub: '7:00 PM · 1h',
+        homeCard4Badge: 'Planned by Milo',
+        progressTitle: 'Progress',
+        profileTitle: 'Profile',
+        profileHeroTitle: 'Your personal space',
+        profileHeroSubtitle: 'Find your main profile information here in a full dedicated page, just like Education.',
+        profileSection: 'Profile',
+        profileFirstName: 'First name',
+        profileEmail: 'Email',
+        profilePhone: 'Phone',
+        profilePhoto: 'Profile photo',
+        profilePhotoName: 'Current photo',
+        profilePhotoHelp: 'JPEG or PNG only',
+        profileImport: 'Import',
+        profileRemove: 'Remove',
+        profilePreferences: 'Preferences',
+        profileLanguage: 'Language',
+        profileAccount: 'Account',
+        languageOptionFr: 'French',
+        languageOptionEn: 'English',
+        languageOptionEs: 'Spanish',
+        accountPersonal: 'Personal',
+        accountStudent: 'Student',
+        accountProfessional: 'Professional',
+        profileSave: 'Save',
+        educationTitle: 'Education',
+        educationWelcome: 'Welcome to Education',
+        educationCardTitle: 'Use the sidebar to access features',
+        educationCardSub: 'AI chat to ask questions about your documents',
+        educationChatButton: 'AI Chat',
+        educationDocumentsButton: 'Documents',
+        educationChatEmpty: 'No conversation yet',
+        educationChatIdle: 'Paste text or choose a document, then ask for notes, a rewrite or a quiz.',
+        educationChatThinking: 'Milo Education is preparing your answer…',
+        educationChatPlaceholder: 'Ask for notes, a quiz or a rewrite…',
+        educationFilesToggleLabel: 'Add files',
+        educationDropzoneTitle: 'Drop up to 3 files',
+        educationDropzoneHelp: 'TXT, MD, CSV or JSON. You can still add an instruction in chat afterwards.',
+        educationFilesCount: '{count}/3 files',
+        educationFilesEmpty: 'No file added',
+        educationClearFiles: 'Clear files',
+        educationFilesLimit: 'You can add up to 3 files maximum.',
+        educationPasteLabel: 'Study text',
+        educationSourcePlaceholder: 'Paste a lesson, chapter or excerpt here to create notes, rewrites and quizzes.',
+        educationDocumentsHelp: 'Import a text document or paste a passage. The Education AI chat will use this content as its study base.',
+        clearText: 'Clear text',
+        educationNoSource: 'Add text or select a document before asking for a study task.',
+        unsupportedDocument: 'Import a text document (.txt, .md, .csv or .json).',
+        importedDocumentMeta: '{count} characters',
+        settingsTitle: 'Settings',
+        settingsTheme: 'Theme',
+        settingsPreferences: 'Preferences',
+        chatEmpty: 'No conversation yet',
+        chatIdle: 'Type a message or speak to Milo',
+        chatListening: 'I\'m listening…',
+        chatThinking: 'Milo is thinking…',
+        chatPlaceholder: 'Write to Milo…',
+        planningDay: 'Day',
+        planningMonth: 'Month',
+        planningNewTask: '+ New task',
+        taskTitle: 'Title',
+        taskDescription: 'Description',
+        taskTitlePlaceholder: 'Task title',
+        taskDescriptionPlaceholder: 'Add a description',
+        taskPlaceholder: 'Tap a task to edit its title and description.',
+        weekday1: 'Mon', weekday2: 'Tue', weekday3: 'Wed', weekday4: 'Thu', weekday5: 'Fri', weekday6: 'Sat', weekday7: 'Sun',
+        createFolder: 'Create folder',
+        uploadDocument: 'Upload document',
+        documentsEmpty: 'No document or folder',
+        settingsDev: 'Settings under development',
+        avatarAlt: 'Profile photo',
+        avatarPreviewAlt: 'Profile photo preview',
+        panelChat: 'Milo',
+        panelEducationChat: 'Milo Education',
+        panelPlanning: 'Planning',
+        panelDocuments: 'Documents',
+        panelSettings: 'Settings',
+        toastLight: 'Light mode enabled',
+        toastDark: 'Dark mode enabled',
+        toastProfileSaved: 'Profile saved',
+        toastImportImage: 'Import a JPEG or PNG file',
+        toastSpeechUnavailable: 'Voice recognition is not available.',
+        chatUnknown: "I didn't understand.",
+        errorServerPrefix: 'Server error: ',
+        reminderDefaultTitle: 'Reminder',
+        reminderConfirm: 'Okay, I will add a reminder at {time} for: {title}',
+        voiceAddedMeta: 'Added by voice command',
+        noTasksToday: 'No tasks for this day. Add one to place it in your schedule.',
+        promptTaskTitle: 'Task title:',
+        promptTaskTime: 'Time (HH:mm):',
+        promptTimeInvalid: 'Invalid format. Use HH:mm',
+        untitledTask: 'Untitled'
+      }
+    };
 
 function normalizeAppLanguage(value) {
   return value === 'English' ? 'en' : 'fr';
@@ -312,10 +375,20 @@ function applyTranslations() {
   setText('education-welcome-label', 'educationWelcome');
   setText('education-card-title', 'educationCardTitle');
   setText('education-card-sub', 'educationCardSub');
+  setText('education-chat-btn', 'educationChatButton');
+  setText('education-documents-btn', 'educationDocumentsButton');
+  if (educationFilesToggle) {
+    educationFilesToggle.setAttribute('aria-label', t('educationFilesToggleLabel'));
+    educationFilesToggle.setAttribute('title', t('educationFilesToggleLabel'));
+  }
+  setText('education-dropzone-title', 'educationDropzoneTitle');
+  setText('education-dropzone-help', 'educationDropzoneHelp');
+  setText('education-clear-files-btn', 'educationClearFiles');
   setText('settings-menu-title', 'settingsTitle');
   setText('theme-label', 'settingsTheme');
   setText('settings-preferences-item', 'settingsPreferences');
   setText('chat-empty-initial', 'chatEmpty');
+  setText('education-chat-empty', 'educationChatEmpty');
   setText('view-day-btn-panel', 'planningDay');
   setText('view-month-btn-panel', 'planningMonth');
   setText('btn-new-task', 'planningNewTask');
@@ -333,9 +406,14 @@ function applyTranslations() {
   setText('weekday-7', 'weekday7');
   setText('create-folder-btn', 'createFolder');
   setText('upload-doc-btn', 'uploadDocument');
+  setText('clear-doc-btn', 'clearText');
   setText('documents-empty-text', 'documentsEmpty');
+  setText('education-paste-label', 'educationPasteLabel');
+  setText('documents-help-text', 'educationDocumentsHelp');
   setText('settings-dev-text', 'settingsDev');
   setPlaceholder('text-input', 'chatPlaceholder');
+  setPlaceholder('education-text-input', 'educationChatPlaceholder');
+  setPlaceholder('education-source-text', 'educationSourcePlaceholder');
   setPlaceholder('profile-first-name', 'profileFirstName');
   setPlaceholder('profile-phone', 'profilePhone');
   document.querySelectorAll('.profile-avatar-image').forEach((image) => {
@@ -345,10 +423,13 @@ function applyTranslations() {
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   setPanelState('idle');
   renderChatHistory();
+  renderEducationChatHistory();
+  renderDocumentsList();
   if (currentPanelSection === 'planning') renderPlanningPanel();
   if (currentPanelSection && currentPanelSection !== 'planning') {
     const panelTitles = {
       chat: 'panelChat',
+      'education-chat': 'panelEducationChat',
       planning: 'panelPlanning',
       documents: 'panelDocuments',
       settings: 'panelSettings'
@@ -426,6 +507,7 @@ applyProfileData(initialProfileData);
 savedProfileSnapshot = profileDataToSnapshot(initialProfileData);
 initializeProfileForm();
 applyLanguage(initialProfileData.language);
+loadEducationState();
 updateProfileSaveState();
 
 avatarPageTriggers.forEach(trigger => {
@@ -444,6 +526,63 @@ if (profilePhotoRemoveButton) {
 if (profileSaveButton) {
   profileSaveButton.addEventListener('click', saveProfileData);
 }
+
+if (educationDocumentInput) {
+  educationDocumentInput.addEventListener('change', handleEducationDocumentUpload);
+}
+
+if (educationFilesToggle && educationDocumentInput) {
+  educationFilesToggle.addEventListener('click', () => {
+    setEducationUploadPanelOpen(true);
+    educationDocumentInput.click();
+  });
+}
+
+if (educationDropzone && educationDocumentInput) {
+  educationDropzone.addEventListener('click', () => educationDocumentInput.click());
+  educationDropzone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    educationDropzone.classList.add('dragover');
+  });
+  educationDropzone.addEventListener('dragleave', () => {
+    educationDropzone.classList.remove('dragover');
+  });
+  educationDropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    educationDropzone.classList.remove('dragover');
+    if (!event.dataTransfer?.files?.length) return;
+    handleEducationDocumentUpload({ target: { files: event.dataTransfer.files, value: '' } });
+  });
+}
+
+if (educationSourceTextArea) {
+  educationSourceTextArea.addEventListener('input', persistEducationState);
+}
+
+if (clearDocBtn) {
+  clearDocBtn.addEventListener('click', clearEducationSourceText);
+}
+
+if (educationClearFilesBtn) {
+  educationClearFilesBtn.addEventListener('click', clearEducationDocuments);
+}
+
+const uploadDocumentButton = document.getElementById('upload-doc-btn');
+if (uploadDocumentButton && educationDocumentInput) {
+  uploadDocumentButton.addEventListener('click', () => educationDocumentInput.click());
+}
+
+document.addEventListener('click', (event) => {
+  const removeButton = event.target.closest('[data-remove-document-id]');
+  if (removeButton) {
+    removeEducationDocument(removeButton.dataset.removeDocumentId);
+    return;
+  }
+
+  const documentButton = event.target.closest('[data-document-id]');
+  if (!documentButton) return;
+  selectEducationDocument(documentButton.dataset.documentId);
+});
 
 function openPanel() {
   panelOpen = true;
@@ -655,6 +794,7 @@ function openPanelSection(section) {
   
   const titles = {
     'chat': t('panelChat'),
+    'education-chat': t('panelEducationChat'),
     'planning': t('panelPlanning'),
     'documents': t('panelDocuments'),
     'settings': t('panelSettings')
@@ -687,6 +827,12 @@ function setPanelState(state) {
       panelLabel.textContent = t('chatListening');
     } else if (state === 'thinking') {
       panelLabel.textContent = t('chatThinking');
+    }
+  } else if (currentPanelSection === 'education-chat' && educationPanelLabel) {
+    if (state === 'idle') {
+      educationPanelLabel.textContent = t('educationChatIdle');
+    } else if (state === 'thinking') {
+      educationPanelLabel.textContent = t('educationChatThinking');
     }
   }
 }
@@ -927,6 +1073,181 @@ function addMessageToHistory(role, text) {
   renderChatHistory();
 }
 
+function renderEducationChatHistory() {
+  if (!educationChatHistoryEl) return;
+  if (educationChatHistory.length === 0) {
+    educationChatHistoryEl.innerHTML = `<div class="chat-empty">${t('educationChatEmpty')}</div>`;
+    return;
+  }
+
+  educationChatHistoryEl.innerHTML = educationChatHistory.map(msg => `<div class="chat-bubble ${msg.role}">${msg.text}</div>`).join('');
+  educationChatHistoryEl.scrollTop = educationChatHistoryEl.scrollHeight;
+}
+
+function addMessageToEducationHistory(role, text) {
+  educationChatHistory.push({ role, text });
+  renderEducationChatHistory();
+}
+
+function setEducationUploadPanelOpen(open) {
+  isEducationUploadPanelOpen = open;
+  if (educationUploadPanel) {
+    educationUploadPanel.classList.toggle('open', open);
+  }
+  if (educationFilesToggle) {
+    educationFilesToggle.classList.toggle('active', open);
+  }
+}
+
+function setEducationAgentRequestPending(pending) {
+  isEducationAgentRequestPending = pending;
+  if (educationSendBtn) educationSendBtn.disabled = pending;
+  if (educationTextInput) educationTextInput.disabled = pending;
+}
+
+function loadEducationState() {
+  try {
+    const rawDocuments = window.localStorage.getItem(educationDocumentsStorageKey);
+    educationDocuments = rawDocuments ? JSON.parse(rawDocuments) : [];
+  } catch {
+    educationDocuments = [];
+  }
+
+  try {
+    const sourceText = window.localStorage.getItem(educationSourceStorageKey) || '';
+    if (educationSourceTextArea) educationSourceTextArea.value = sourceText;
+  } catch {
+    if (educationSourceTextArea) educationSourceTextArea.value = '';
+  }
+
+  selectedEducationDocumentId = educationDocuments[0]?.id || null;
+  setEducationUploadPanelOpen(educationDocuments.length > 0);
+}
+
+function persistEducationState() {
+  window.localStorage.setItem(educationDocumentsStorageKey, JSON.stringify(educationDocuments));
+  window.localStorage.setItem(educationSourceStorageKey, educationSourceTextArea?.value || '');
+}
+
+function renderDocumentsList() {
+  const listEl = document.getElementById('documents-list');
+  if (!listEl) return;
+
+  if (educationDocuments.length === 0) {
+    listEl.innerHTML = `<div style="color: var(--text3); text-align: center; padding: 20px;"><span id="documents-empty-text">${t('documentsEmpty')}</span></div>`;
+    return;
+  }
+
+  listEl.innerHTML = educationDocuments.map((document) => {
+    const activeClass = document.id === selectedEducationDocumentId ? 'active' : '';
+    return `<button type="button" class="document-item ${activeClass}" data-document-id="${document.id}"><div class="document-item-name">${document.name}</div><div class="document-item-meta">${t('importedDocumentMeta', { count: document.content.length })}</div></button>`;
+  }).join('');
+
+  if (educationChatFilesList) {
+    if (educationDocuments.length === 0) {
+      educationChatFilesList.innerHTML = `<span class="education-files-empty" id="education-files-empty">${t('educationFilesEmpty')}</span>`;
+    } else {
+      educationChatFilesList.innerHTML = educationDocuments.map(document => `
+        <div class="education-file-chip">
+          <span class="education-file-chip-name">${document.name}</span>
+          <button type="button" class="education-file-remove" data-remove-document-id="${document.id}" aria-label="Retirer">×</button>
+        </div>
+      `).join('');
+    }
+  }
+
+  if (educationFilesCount) {
+    educationFilesCount.textContent = t('educationFilesCount', { count: educationDocuments.length });
+  }
+}
+
+function getEducationStudyContext() {
+  return {
+    pastedText: educationSourceTextArea?.value.trim() || '',
+    selectedDocumentId: selectedEducationDocumentId,
+    documents: educationDocuments.map(document => ({
+      id: document.id,
+      name: document.name,
+      content: document.content
+    }))
+  };
+}
+
+function handleEducationDocumentUpload(event) {
+  const files = Array.from(event.target.files || []);
+  if (files.length === 0) return;
+
+  const remainingSlots = 3 - educationDocuments.length;
+  if (remainingSlots <= 0) {
+    showToast(t('educationFilesLimit'));
+    event.target.value = '';
+    return;
+  }
+
+  const acceptedFiles = files.slice(0, remainingSlots);
+  if (files.length > remainingSlots) {
+    showToast(t('educationFilesLimit'));
+  }
+
+  acceptedFiles.forEach((file, index) => {
+    const isTextLike = file.type.startsWith('text/') || ['application/json'].includes(file.type) || /\.(txt|md|csv|json)$/i.test(file.name);
+    if (!isTextLike) {
+      if (index === 0) showToast(t('unsupportedDocument'));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : '';
+      const documentEntry = {
+        id: `edu-doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        content
+      };
+
+      educationDocuments.unshift(documentEntry);
+      selectedEducationDocumentId = documentEntry.id;
+      persistEducationState();
+      renderDocumentsList();
+      setEducationUploadPanelOpen(true);
+    };
+
+    reader.readAsText(file);
+  });
+
+  event.target.value = '';
+}
+
+function selectEducationDocument(documentId) {
+  selectedEducationDocumentId = documentId;
+  renderDocumentsList();
+}
+
+function clearEducationSourceText() {
+  if (educationSourceTextArea) {
+    educationSourceTextArea.value = '';
+  }
+  persistEducationState();
+}
+
+function removeEducationDocument(documentId) {
+  educationDocuments = educationDocuments.filter(document => document.id !== documentId);
+  if (selectedEducationDocumentId === documentId) {
+    selectedEducationDocumentId = educationDocuments[0]?.id || null;
+  }
+  persistEducationState();
+  renderDocumentsList();
+  setEducationUploadPanelOpen(educationDocuments.length > 0);
+}
+
+function clearEducationDocuments() {
+  educationDocuments = [];
+  selectedEducationDocumentId = null;
+  persistEducationState();
+  renderDocumentsList();
+  setEducationUploadPanelOpen(false);
+}
+
 function setAgentRequestPending(pending) {
   isAgentRequestPending = pending;
   if (sendBtn) sendBtn.disabled = pending;
@@ -936,6 +1257,8 @@ function setAgentRequestPending(pending) {
 
 sendBtn.addEventListener('click', sendFromInput);
 textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendFromInput(); });
+if (educationSendBtn) educationSendBtn.addEventListener('click', sendEducationFromInput);
+if (educationTextInput) educationTextInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendEducationFromInput(); });
 miloBtn.addEventListener('click', function() {
   if (isAgentRequestPending) {
     showToast(t('chatThinking'));
@@ -963,6 +1286,17 @@ if (chatPanel) {
   chatPanel.addEventListener('touchmove', moveChatSurfaceTouchDrag, { passive: false });
   chatPanel.addEventListener('touchend', endChatSurfaceTouchDrag);
   chatPanel.addEventListener('touchcancel', endChatSurfaceTouchDrag);
+}
+
+if (educationChatPanel) {
+  educationChatPanel.addEventListener('pointerdown', startChatSurfacePointerDrag);
+  educationChatPanel.addEventListener('pointermove', moveChatSurfacePointerDrag);
+  educationChatPanel.addEventListener('pointerup', endChatSurfacePointerDrag);
+  educationChatPanel.addEventListener('pointercancel', endChatSurfacePointerDrag);
+  educationChatPanel.addEventListener('touchstart', startChatSurfaceTouchDrag, { passive: true });
+  educationChatPanel.addEventListener('touchmove', moveChatSurfaceTouchDrag, { passive: false });
+  educationChatPanel.addEventListener('touchend', endChatSurfaceTouchDrag);
+  educationChatPanel.addEventListener('touchcancel', endChatSurfaceTouchDrag);
 }
 
 if (planningPanel) {
@@ -1022,6 +1356,26 @@ function sendFromInput() {
   }
 }
 
+function sendEducationFromInput() {
+  if (isEducationAgentRequestPending) {
+    showToast(t('educationChatThinking'));
+    return;
+  }
+
+  const v = educationTextInput?.value.trim();
+  const studyContext = getEducationStudyContext();
+  if (!v) return;
+  if (!studyContext.pastedText && studyContext.documents.length === 0) {
+    showToast(t('educationNoSource'));
+    return;
+  }
+
+  openPanelSection('education-chat');
+  addMessageToEducationHistory('user', v);
+  educationTextInput.value = '';
+  sendCommand(v, 'education-text');
+}
+
 function parseReminder(text) {
   const match = /(?:ajou(?:te|ter) un rappel(?: à)?\s*)(\d{1,2}(?:h|H)(?:\d{2})?)(?:\s*(?:pour|:)?\s*(.*))?/i.exec(text);
   if (!match) return null;
@@ -1065,6 +1419,18 @@ function getAgentRequestPayload(message) {
         meta: event.meta
       }))
     }
+  };
+}
+
+function getEducationAgentRequestPayload(message) {
+  return {
+    message,
+    history: educationChatHistory,
+    language: currentLanguage,
+    sessionId: `${getChatSessionId()}-education`,
+    profile: collectProfileData(),
+    studyContext: getEducationStudyContext(),
+    agent: 'education'
   };
 }
 
@@ -1136,16 +1502,26 @@ function applyAgentActions(actions = []) {
 }
 
 async function sendCommand(text, mode = 'text') {
-  if (isAgentRequestPending) {
-    return;
+  const isEducationMode = mode === 'education-text';
+
+  if (isEducationMode) {
+    if (isEducationAgentRequestPending) return;
+    setEducationAgentRequestPending(true);
+    if (educationPanelLabel) educationPanelLabel.textContent = t('educationChatThinking');
   }
 
-  setAgentRequestPending(true);
-  miloBtn.classList.add('thinking');
-  setPanelState('thinking');
+  if (isAgentRequestPending) {
+    if (!isEducationMode) return;
+  }
+
+  if (!isEducationMode) {
+    setAgentRequestPending(true);
+    miloBtn.classList.add('thinking');
+    setPanelState('thinking');
+  }
 
   const reminder = parseReminder(text);
-  if (reminder) {
+  if (!isEducationMode && reminder) {
     const key = formatDateKey(planningState.currentDate);
     const reminderEvent = createPlanningEvent({
       date: key,
@@ -1173,30 +1549,43 @@ async function sendCommand(text, mode = 'text') {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(getAgentRequestPayload(text))
+      body: JSON.stringify(isEducationMode ? getEducationAgentRequestPayload(text) : getAgentRequestPayload(text))
     });
 
     const data = await res.json();
     const reply = data.reply || t('chatUnknown');
-    applyAgentActions(data.actions);
-
-    setAgentRequestPending(false);
-    miloBtn.classList.remove('thinking');
-    setPanelState('idle');
+    if (!isEducationMode) {
+      applyAgentActions(data.actions);
+      setAgentRequestPending(false);
+      miloBtn.classList.remove('thinking');
+      setPanelState('idle');
+    } else {
+      setEducationAgentRequestPending(false);
+      if (educationPanelLabel) educationPanelLabel.textContent = t('educationChatIdle');
+    }
 
     if (mode === 'text') {
       addMessageToHistory('milo', reply);
+    } else if (isEducationMode) {
+      addMessageToEducationHistory('milo', reply);
     } else {
       showToast(reply);
     }
   } catch (err) {
     console.error('Error in sendCommand:', err);
-    setAgentRequestPending(false);
-    miloBtn.classList.remove('thinking');
-    setPanelState('idle');
+    if (!isEducationMode) {
+      setAgentRequestPending(false);
+      miloBtn.classList.remove('thinking');
+      setPanelState('idle');
+    } else {
+      setEducationAgentRequestPending(false);
+      if (educationPanelLabel) educationPanelLabel.textContent = t('educationChatIdle');
+    }
 
     if (mode === 'text') {
       addMessageToHistory('milo', t('errorServerPrefix') + err.message);
+    } else if (isEducationMode) {
+      addMessageToEducationHistory('milo', t('errorServerPrefix') + err.message);
     } else {
       showToast(t('errorServerPrefix') + err.message);
     }

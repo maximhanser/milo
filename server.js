@@ -80,7 +80,19 @@ function createAIClient() {
   return new OpenAI(options);
 }
 
-function getAssistantSystemPrompt() {
+function getAssistantSystemPrompt(agentType = "general") {
+  if (agentType === "education") {
+    return [
+      "Tu es Milo Éducation, un assistant pédagogique spécialisé.",
+      "Ta mission est de travailler à partir d'un texte collé ou d'un document importé par l'utilisateur.",
+      "Tu peux créer des fiches de révision, des reformulations, des quiz, des résumés, des explications et des plans de révision.",
+      "Réponds dans la langue de l'utilisateur.",
+      "Si la demande nécessite un texte source mais qu'aucun texte collé ni document importé n'est disponible, demande clairement à l'utilisateur de coller un texte ou d'importer un document texte.",
+      "N'invente pas le contenu du document si le contexte fourni est vide.",
+      "Sois structuré, clair et utile pour les études."
+    ].join(" ");
+  }
+
   return [
     "Tu es Milo, un assistant personnel agentique.",
     "Ton rôle est de comprendre la demande réelle de l'utilisateur, même si elle est vague, puis d'agir avec les outils disponibles quand cela est utile.",
@@ -145,6 +157,22 @@ function sanitizePlanning(planning = {}) {
         description: typeof event.description === "string" ? event.description : "",
         meta: typeof event.meta === "string" ? event.meta : ""
       }))
+  };
+}
+
+function sanitizeStudyContext(studyContext = {}) {
+  const documents = Array.isArray(studyContext.documents) ? studyContext.documents : [];
+  return {
+    pastedText: typeof studyContext.pastedText === "string" ? studyContext.pastedText.trim().slice(0, 20000) : "",
+    selectedDocumentId: typeof studyContext.selectedDocumentId === "string" ? studyContext.selectedDocumentId : null,
+    documents: documents
+      .filter(document => document && typeof document.name === "string")
+      .map(document => ({
+        id: typeof document.id === "string" ? document.id : `doc-${Math.random().toString(36).slice(2, 10)}`,
+        name: document.name,
+        content: typeof document.content === "string" ? document.content.trim().slice(0, 20000) : ""
+      }))
+      .filter(document => document.content)
   };
 }
 
@@ -215,6 +243,28 @@ function buildContextMessage({ language, profile, planning, sessionId }) {
       upcomingEvents
     },
     memory
+  });
+}
+
+function buildEducationContextMessage({ language, profile, studyContext, sessionId }) {
+  const memory = getMemorySnapshot(sessionId);
+  const selectedDocument = studyContext.documents.find(document => document.id === studyContext.selectedDocumentId) || null;
+
+  return JSON.stringify({
+    language,
+    profile,
+    memory,
+    studyContext: {
+      pastedText: studyContext.pastedText,
+      selectedDocumentId: studyContext.selectedDocumentId,
+      selectedDocumentName: selectedDocument?.name || null,
+      selectedDocumentContent: selectedDocument?.content || "",
+      documents: studyContext.documents.map(document => ({
+        id: document.id,
+        name: document.name,
+        contentPreview: document.content.slice(0, 1200)
+      }))
+    }
   });
 }
 
@@ -362,7 +412,11 @@ async function searchWeb(query) {
   return { ok: true, results };
 }
 
-function getAgentTools() {
+function getAgentTools(agentType = "general") {
+  if (agentType === "education") {
+    return [];
+  }
+
   return [
     {
       type: "function",
@@ -573,7 +627,7 @@ async function executeAgentTool(toolName, args, runtime) {
   }
 }
 
-async function runAgentCompletion({ client, model, message, history, language, profile, planning, sessionId }) {
+async function runAgentCompletion({ client, model, message, history, language, profile, planning, studyContext, sessionId, agentType = "general" }) {
   const runtime = {
     sessionId,
     locale: language === "en" ? "en-US" : "fr-FR",
@@ -581,10 +635,13 @@ async function runAgentCompletion({ client, model, message, history, language, p
     planning,
     actions: []
   };
-  const tools = getAgentTools();
+  const tools = getAgentTools(agentType);
+  const contextMessage = agentType === "education"
+    ? buildEducationContextMessage({ language, profile, studyContext, sessionId })
+    : buildContextMessage({ language, profile, planning, sessionId });
   const messages = [
-    { role: "system", content: getAssistantSystemPrompt() },
-    { role: "system", content: `Contexte applicatif JSON: ${buildContextMessage({ language, profile, planning, sessionId })}` },
+    { role: "system", content: getAssistantSystemPrompt(agentType) },
+    { role: "system", content: `Contexte applicatif JSON: ${contextMessage}` },
     ...sanitizeHistory(history),
     { role: "user", content: message }
   ];
@@ -592,13 +649,18 @@ async function runAgentCompletion({ client, model, message, history, language, p
   let finalReply = null;
 
   for (let step = 0; step < 6; step += 1) {
-    const response = await createChatCompletionWithRetry(client, {
+    const requestPayload = {
       model,
       messages,
-      tools,
-      tool_choice: "auto",
-      temperature: 0.4
-    });
+      temperature: agentType === "education" ? 0.6 : 0.4
+    };
+
+    if (tools.length) {
+      requestPayload.tools = tools;
+      requestPayload.tool_choice = "auto";
+    }
+
+    const response = await createChatCompletionWithRetry(client, requestPayload);
 
     const assistantMessage = response?.choices?.[0]?.message;
     if (!assistantMessage) {
@@ -687,12 +749,14 @@ function getAssistantErrorReply(error) {
 
 app.post("/api/chat", async (req, res) => {
   try {
-    const { message, history = [], language = "fr", profile = {}, planning = {}, sessionId } = req.body;
+    const { message, history = [], language = "fr", profile = {}, planning = {}, studyContext = {}, sessionId, agent = "general" } = req.body;
     const client = createAIClient();
     const model = getAIModel();
     const safeProfile = sanitizeProfile(profile);
     const safePlanning = sanitizePlanning(planning);
+    const safeStudyContext = sanitizeStudyContext(studyContext);
     const safeSessionId = getSessionId(sessionId);
+    const safeAgentType = agent === "education" ? "education" : "general";
 
     const response = await runAgentCompletion({
       client,
@@ -702,7 +766,9 @@ app.post("/api/chat", async (req, res) => {
       language,
       profile: safeProfile,
       planning: safePlanning,
+      studyContext: safeStudyContext,
       sessionId: safeSessionId
+      ,agentType: safeAgentType
     });
 
     res.json({

@@ -413,6 +413,141 @@
   }
   .send-btn:active { background: var(--accent2); }
 
+  .education-chat-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 10px;
+  }
+
+  .education-chat-toolbar .panel-state-label {
+    margin: 0;
+    flex: 1;
+    text-align: left;
+  }
+
+  .education-files-toggle {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border: 0.5px solid rgba(124,109,240,0.28);
+    background: rgba(124,109,240,0.14);
+    color: var(--text);
+    border-radius: 50%;
+    padding: 0;
+    font-size: 22px;
+    line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .education-files-toggle.active {
+    border-color: rgba(124,109,240,0.65);
+    background: rgba(124,109,240,0.22);
+  }
+
+  .education-upload-panel {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 18px;
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .education-upload-panel.open {
+    display: flex;
+  }
+
+  .education-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px dashed rgba(124,109,240,0.35);
+    background: rgba(124,109,240,0.08);
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .education-dropzone.dragover {
+    border-color: rgba(124,109,240,0.7);
+    background: rgba(124,109,240,0.15);
+  }
+
+  .education-dropzone-title {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .education-dropzone-help {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.4;
+  }
+
+  .education-files-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .education-files-count {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .education-files-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .education-file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    border-radius: 999px;
+    border: 0.5px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .education-file-chip-name {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .education-file-remove {
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .education-files-empty {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
   /* Planning */
   .planning-controls {
     display: flex;
@@ -855,6 +990,62 @@
   .main-content {
     flex: 1;
     padding: 0 20px 120px;
+  }
+
+  .document-source-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 18px;
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+    margin-bottom: 14px;
+  }
+
+  .education-source-textarea {
+    min-height: 150px;
+    resize: vertical;
+  }
+
+  .documents-help {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .documents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .document-item {
+    width: 100%;
+    text-align: left;
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    border-radius: 16px;
+    padding: 12px 14px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .document-item.active {
+    border-color: rgba(124,109,240,0.45);
+    background: rgba(124,109,240,0.12);
+  }
+
+  .document-item-name {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .document-item-meta {
+    font-size: 12px;
+    color: var(--text2);
   }
 
   .profile-page {
@@ -1336,8 +1527,8 @@
 
   <div class="scroll-area education-content">
     <div class="sidebar">
-      <button class="sidebar-btn" onclick="openPanelSection('chat')">Chat IA</button>
-      <button class="sidebar-btn" onclick="openPanelSection('documents')">Documents</button>
+      <button class="sidebar-btn" id="education-chat-btn" onclick="openPanelSection('education-chat')">Chat IA</button>
+      <button class="sidebar-btn" id="education-documents-btn" onclick="openPanelSection('documents')">Documents</button>
     </div>
     <div class="main-content">
       <div class="section-label" id="education-welcome-label">Bienvenue dans Éducation</div>
@@ -1391,6 +1582,39 @@
       </div>
     </div>
 
+    <!-- Education chat section -->
+    <div id="panel-education-chat" class="panel-section" style="display: none;">
+      <div class="chat-history" id="education-chat-history">
+        <div class="chat-empty" id="education-chat-empty">Aucun échange pour le moment</div>
+      </div>
+      <div class="education-chat-toolbar">
+        <div class="panel-state-label" id="education-panel-label">Colle un texte ou choisis un document puis demande une fiche, une reformulation ou un quiz.</div>
+        <button type="button" class="education-files-toggle" id="education-files-toggle" aria-label="Ajouter des fichiers" title="Ajouter des fichiers">+</button>
+      </div>
+      <div class="education-upload-panel" id="education-upload-panel">
+        <button type="button" class="education-dropzone" id="education-dropzone">
+          <span class="education-dropzone-title" id="education-dropzone-title">Dépose jusqu'à 3 fichiers</span>
+          <span class="education-dropzone-help" id="education-dropzone-help">TXT, MD, CSV ou JSON. Tu peux ensuite ajouter une consigne dans le chat.</span>
+        </button>
+        <div class="education-files-meta">
+          <span class="education-files-count" id="education-files-count">0/3 fichiers</span>
+          <button class="planning-switch-btn" id="education-clear-files-btn">Vider les fichiers</button>
+        </div>
+        <div class="education-files-list" id="education-chat-files-list">
+          <span class="education-files-empty" id="education-files-empty">Aucun fichier ajouté</span>
+        </div>
+      </div>
+      <div class="input-row">
+        <input class="text-input" id="education-text-input" placeholder="Demande une fiche, un quiz ou une reformulation…" />
+        <button class="send-btn" id="education-send-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="7" y1="12" x2="7" y2="2"/>
+            <polyline points="3,6 7,2 11,6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Planning section -->
     <div id="panel-planning" class="panel-section" style="display: none;">
       <div class="planning-controls">
@@ -1434,11 +1658,17 @@
     <!-- Documents section -->
     <div id="panel-documents" class="panel-section" style="display: none;">
       <div class="documents-controls">
-        <button class="planning-switch-btn" id="create-folder-btn">Créer dossier</button>
         <button class="planning-switch-btn" id="upload-doc-btn">Télécharger document</button>
+        <button class="planning-switch-btn" id="clear-doc-btn">Effacer le texte</button>
       </div>
-      <div id="documents-list">
-        <div style="color: var(--text3); text-align: center; padding: 40px 20px;">
+      <input type="file" id="education-document-input" multiple accept=".txt,.md,.csv,.json,text/plain,text/markdown,application/json,text/csv" style="display: none;" />
+      <div class="document-source-card">
+        <div class="task-editor-label" id="education-paste-label">Texte de travail</div>
+        <textarea class="task-editor-textarea education-source-textarea" id="education-source-text" placeholder="Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz."></textarea>
+        <div class="documents-help" id="documents-help-text">Importe un document texte ou colle un passage. Le chat IA d'Éducation utilisera ce contenu comme base de travail.</div>
+      </div>
+      <div class="documents-list" id="documents-list">
+        <div style="color: var(--text3); text-align: center; padding: 20px;">
           <span id="documents-empty-text">Aucun document ou dossier</span>
         </div>
       </div>
