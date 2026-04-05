@@ -79,6 +79,7 @@
     const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
     const settingsMenuClose = document.getElementById('settings-menu-close');
     const themeToggle = document.getElementById('theme-toggle');
+    const dailyNewsThemeSelect = document.getElementById('daily-news-theme');
     const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
     const avatarImages = document.querySelectorAll('.profile-avatar-image');
     const profileFirstNameInput = document.getElementById('profile-first-name');
@@ -94,6 +95,7 @@
     const profilePhotoLightboxImage = document.getElementById('profile-photo-lightbox-image');
     const profileSaveButton = document.getElementById('profile-save-btn');
     const profileStorageKey = 'milo.profile';
+    const preferencesStorageKey = 'milo.preferences';
     const chatSessionStorageKey = 'milo.chatSessionId';
     const educationDocumentsStorageKey = 'milo.educationDocuments';
     const educationSourceStorageKey = 'milo.educationSourceText';
@@ -112,6 +114,7 @@
     let lastEducationTaskSignature = '';
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
+    let dailyNewsTheme = 'none';
 
     const translations = {
       fr: {
@@ -119,9 +122,13 @@
         navPlanning: 'Planning',
         navEducation: 'Éducation',
         navProgress: 'Progress',
+        homeDailyNews: 'Daily News',
         homeToday: 'Aujourd\'hui',
         homeTomorrow: 'Demain',
         homeMonthlyPrimary: 'Tâches principales mensuelles',
+        homeDailyNewsEmptyTitle: 'Choisis un thème d\'actualité',
+        homeDailyNewsEmptySub: 'Ouvre Paramètres pour sélectionner un thème et afficher une news quotidienne sur l\'accueil.',
+        homeDailyNewsBadge: 'Sélection quotidienne',
         homeEmptyToday: 'Aucune tâche prévue aujourd\'hui.',
         homeEmptyTomorrow: 'Aucune tâche prévue demain.',
         homeEmptyMonthlyPrimary: 'Aucune tâche principale pour ce mois.',
@@ -210,7 +217,13 @@
         importedDocumentMeta: '{count} caractères',
         settingsTitle: 'Paramètres',
         settingsTheme: 'Thème',
+        settingsDailyNewsTheme: 'Thème Daily News',
         settingsPreferences: 'Préférences',
+        newsThemeNone: 'Aucun',
+        newsThemeMusic: 'Musique',
+        newsThemePolitics: 'Politique',
+        newsThemeEconomy: 'Économie',
+        newsThemeArt: 'Art',
         chatEmpty: 'Aucun échange pour le moment',
         chatIdle: 'Écris un message ou parle à Milo',
         chatListening: 'J\'écoute…',
@@ -248,6 +261,7 @@
         toastLight: 'Mode clair activé',
         toastDark: 'Mode sombre activé',
         toastProfileSaved: 'Profil enregistré',
+        toastDailyNewsThemeSaved: 'Daily News réglé sur : {theme}',
         toastImportImage: 'Importe un fichier JPEG ou PNG',
         toastSpeechUnavailable: 'La reconnaissance vocale n\'est pas disponible.',
         chatUnknown: 'Je n\'ai pas compris.',
@@ -266,9 +280,13 @@
         navPlanning: 'Planning',
         navEducation: 'Education',
         navProgress: 'Progress',
+        homeDailyNews: 'Daily News',
         homeToday: 'Today',
         homeTomorrow: 'Tomorrow',
         homeMonthlyPrimary: 'Main monthly tasks',
+        homeDailyNewsEmptyTitle: 'Choose a news theme',
+        homeDailyNewsEmptySub: 'Open Settings to select a theme and show a daily news card on the home page.',
+        homeDailyNewsBadge: 'Daily selection',
         homeEmptyToday: 'No task scheduled today.',
         homeEmptyTomorrow: 'No task scheduled tomorrow.',
         homeEmptyMonthlyPrimary: 'No main task for this month.',
@@ -357,7 +375,13 @@
         importedDocumentMeta: '{count} characters',
         settingsTitle: 'Settings',
         settingsTheme: 'Theme',
+        settingsDailyNewsTheme: 'Daily News theme',
         settingsPreferences: 'Preferences',
+        newsThemeNone: 'None',
+        newsThemeMusic: 'Music',
+        newsThemePolitics: 'Politics',
+        newsThemeEconomy: 'Economy',
+        newsThemeArt: 'Art',
         chatEmpty: 'No conversation yet',
         chatIdle: 'Type a message or speak to Milo',
         chatListening: 'I\'m listening…',
@@ -395,6 +419,7 @@
         toastLight: 'Light mode enabled',
         toastDark: 'Dark mode enabled',
         toastProfileSaved: 'Profile saved',
+        toastDailyNewsThemeSaved: 'Daily News set to: {theme}',
         toastImportImage: 'Import a JPEG or PNG file',
         toastSpeechUnavailable: 'Voice recognition is not available.',
         chatUnknown: "I didn't understand.",
@@ -413,9 +438,13 @@
         navPlanning: 'Planificacion',
         navEducation: 'Educacion',
         navProgress: 'Progreso',
+        homeDailyNews: 'Daily News',
         homeToday: 'Hoy',
         homeTomorrow: 'Manana',
         homeMonthlyPrimary: 'Tareas principales mensuales',
+        homeDailyNewsEmptyTitle: 'Elige un tema de actualidad',
+        homeDailyNewsEmptySub: 'Abre Ajustes para seleccionar un tema y mostrar una noticia diaria en la pantalla de inicio.',
+        homeDailyNewsBadge: 'Seleccion diaria',
         homeEmptyToday: 'No hay tareas previstas hoy.',
         homeEmptyTomorrow: 'No hay tareas previstas manana.',
         homeEmptyMonthlyPrimary: 'No hay tareas principales para este mes.',
@@ -504,7 +533,13 @@
         importedDocumentMeta: '{count} caracteres',
         settingsTitle: 'Ajustes',
         settingsTheme: 'Tema',
+        settingsDailyNewsTheme: 'Tema Daily News',
         settingsPreferences: 'Preferencias',
+        newsThemeNone: 'Ninguno',
+        newsThemeMusic: 'Musica',
+        newsThemePolitics: 'Politica',
+        newsThemeEconomy: 'Economia',
+        newsThemeArt: 'Arte',
         chatEmpty: 'Todavia no hay conversacion',
         chatIdle: 'Escribe un mensaje o habla con Milo',
         chatListening: 'Te escucho...',
@@ -542,6 +577,7 @@
         toastLight: 'Modo claro activado',
         toastDark: 'Modo oscuro activado',
         toastProfileSaved: 'Perfil guardado',
+        toastDailyNewsThemeSaved: 'Daily News ajustado a: {theme}',
         toastImportImage: 'Importa un archivo JPEG o PNG',
         toastSpeechUnavailable: 'El reconocimiento de voz no esta disponible.',
         chatUnknown: 'No he entendido.',
@@ -556,6 +592,133 @@
         untitledTask: 'Sin titulo'
       }
     };
+
+const DAILY_NEWS_THEMES = ['none', 'music', 'politics', 'economy', 'art'];
+
+const dailyNewsCatalog = {
+  music: {
+    fr: [
+      { title: 'Les concerts intimistes gagnent du terrain', sub: 'Les petites salles affichent complet grâce à des formats plus proches du public et à des sets plus courts.' },
+      { title: 'Le streaming met les albums conceptuels en avant', sub: 'De plus en plus d\'artistes regroupent leurs sorties autour d\'un récit unique pour fidéliser leur audience.' },
+      { title: 'Les bandes-son rétro reviennent dans les playlists', sub: 'Les titres inspirés des années 2000 progressent fortement dans les sélections quotidiennes.' }
+    ],
+    en: [
+      { title: 'Intimate live shows keep gaining momentum', sub: 'Small venues are filling up with shorter sets and closer audience interaction.' },
+      { title: 'Streaming boosts concept albums again', sub: 'More artists are grouping releases around a single narrative to build stronger loyalty.' },
+      { title: 'Retro soundtracks are back in daily playlists', sub: 'Tracks inspired by the 2000s keep climbing in curated music selections.' }
+    ],
+    es: [
+      { title: 'Los conciertos intimos siguen creciendo', sub: 'Las salas pequenas llenan gracias a formatos mas cercanos al publico y sets mas cortos.' },
+      { title: 'El streaming impulsa de nuevo los albumes conceptuales', sub: 'Cada vez mas artistas agrupan sus lanzamientos en torno a una misma narrativa.' },
+      { title: 'Las bandas sonoras retro vuelven a las playlists', sub: 'Las canciones inspiradas en los anos 2000 suben en las selecciones diarias.' }
+    ]
+  },
+  politics: {
+    fr: [
+      { title: 'Les formats courts dominent la communication politique', sub: 'Les équipes de campagne privilégient des messages plus simples et très visuels sur mobile.' },
+      { title: 'Les débats locaux reprennent de l\'importance', sub: 'Les sujets de proximité reviennent au premier plan dans de nombreuses villes.' },
+      { title: 'La transparence budgétaire devient un thème central', sub: 'Les citoyens demandent davantage de lisibilité sur les dépenses publiques concrètes.' }
+    ],
+    en: [
+      { title: 'Short-form content now drives political messaging', sub: 'Campaign teams are focusing on simpler, highly visual mobile-first communication.' },
+      { title: 'Local debates are gaining weight again', sub: 'Community-level issues are returning to the center of many public discussions.' },
+      { title: 'Budget transparency is becoming a central topic', sub: 'Citizens increasingly want clearer visibility into practical public spending.' }
+    ],
+    es: [
+      { title: 'Los formatos cortos dominan la comunicacion politica', sub: 'Los equipos apuestan por mensajes mas simples y visuales pensados para movil.' },
+      { title: 'Los debates locales recuperan importancia', sub: 'Los temas de proximidad vuelven al centro de muchas conversaciones publicas.' },
+      { title: 'La transparencia presupuestaria gana peso', sub: 'La ciudadania pide una vision mas clara del gasto publico concreto.' }
+    ]
+  },
+  economy: {
+    fr: [
+      { title: 'Les consommateurs arbitrent davantage leurs achats', sub: 'Les dépenses du quotidien se concentrent sur la valeur perçue et la durabilité.' },
+      { title: 'Les petites entreprises automatisent plus vite', sub: 'Des outils simples aident désormais les indépendants à gagner du temps sans gros budget.' },
+      { title: 'Le paiement fractionné continue de progresser', sub: 'Les enseignes l\'utilisent pour lisser les achats, surtout sur mobile.' }
+    ],
+    en: [
+      { title: 'Consumers are making sharper trade-offs', sub: 'Daily spending is increasingly guided by perceived value and durability.' },
+      { title: 'Small businesses are automating faster', sub: 'Lightweight tools now help independent workers save time without large budgets.' },
+      { title: 'Installment payments keep expanding', sub: 'Retailers use them to smooth purchases, especially on mobile.' }
+    ],
+    es: [
+      { title: 'Los consumidores ajustan mas sus compras', sub: 'El gasto diario se concentra en el valor percibido y la durabilidad.' },
+      { title: 'Las pequenas empresas automatizan mas rapido', sub: 'Herramientas sencillas ayudan a ahorrar tiempo sin grandes presupuestos.' },
+      { title: 'El pago fraccionado sigue creciendo', sub: 'Las marcas lo usan para facilitar compras, sobre todo en movil.' }
+    ]
+  },
+  art: {
+    fr: [
+      { title: 'Les expositions immersives attirent un nouveau public', sub: 'Les formats visuels et sonores prolongent la visite au-delà du cadre classique.' },
+      { title: 'Les ateliers collectifs reviennent en force', sub: 'Les lieux culturels misent sur des expériences participatives plus régulières.' },
+      { title: 'L\'illustration numérique se diffuse dans les galeries', sub: 'Les œuvres hybrides entre écran et impression prennent plus de place.' }
+    ],
+    en: [
+      { title: 'Immersive exhibitions are drawing new audiences', sub: 'Visual and sound-driven formats extend the visit beyond the classic gallery path.' },
+      { title: 'Collective workshops are making a comeback', sub: 'Cultural venues are investing in more regular participatory experiences.' },
+      { title: 'Digital illustration is spreading in galleries', sub: 'Hybrid works between screen and print are taking more space.' }
+    ],
+    es: [
+      { title: 'Las exposiciones inmersivas atraen a nuevo publico', sub: 'Los formatos visuales y sonoros amplian la experiencia mas alla de la visita clasica.' },
+      { title: 'Los talleres colectivos vuelven con fuerza', sub: 'Los espacios culturales apuestan por experiencias participativas mas frecuentes.' },
+      { title: 'La ilustracion digital gana espacio en galerias', sub: 'Las obras hibridas entre pantalla e impresion ocupan cada vez mas lugar.' }
+    ]
+  }
+};
+
+function normalizeDailyNewsTheme(value) {
+  const normalizedValue = String(value || '').trim().toLowerCase();
+  return DAILY_NEWS_THEMES.includes(normalizedValue) ? normalizedValue : 'none';
+}
+
+function getDefaultPreferences() {
+  return {
+    dailyNewsTheme: 'none'
+  };
+}
+
+function loadPreferences() {
+  const defaults = getDefaultPreferences();
+
+  try {
+    const rawPreferences = window.localStorage.getItem(preferencesStorageKey);
+    if (!rawPreferences) return defaults;
+
+    const parsedPreferences = JSON.parse(rawPreferences);
+    return {
+      ...defaults,
+      ...parsedPreferences,
+      dailyNewsTheme: normalizeDailyNewsTheme(parsedPreferences.dailyNewsTheme)
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function persistPreferences() {
+  window.localStorage.setItem(preferencesStorageKey, JSON.stringify({
+    dailyNewsTheme
+  }));
+}
+
+function applyPreferences(preferences) {
+  dailyNewsTheme = normalizeDailyNewsTheme(preferences?.dailyNewsTheme);
+  if (dailyNewsThemeSelect) {
+    dailyNewsThemeSelect.value = dailyNewsTheme;
+  }
+}
+
+function getNewsThemeLabel(theme) {
+  const themeKeyMap = {
+    none: 'newsThemeNone',
+    music: 'newsThemeMusic',
+    politics: 'newsThemePolitics',
+    economy: 'newsThemeEconomy',
+    art: 'newsThemeArt'
+  };
+
+  return t(themeKeyMap[normalizeDailyNewsTheme(theme)] || 'newsThemeNone');
+}
 
 function normalizeAppLanguage(value) {
   const normalizedValue = String(value || '').trim().toLowerCase();
@@ -595,6 +758,7 @@ function setPlaceholder(id, key) {
 
 function applyTranslations() {
   document.documentElement.lang = currentLanguage;
+  setText('home-daily-news-label', 'homeDailyNews');
   setText('home-today-label', 'homeToday');
   setText('home-tomorrow-label', 'homeTomorrow');
   setText('home-monthly-primary-label', 'homeMonthlyPrimary');
@@ -664,6 +828,12 @@ function applyTranslations() {
   setText('education-clear-files-btn', 'educationClearFiles');
   setText('settings-menu-title', 'settingsTitle');
   setText('theme-label', 'settingsTheme');
+  setText('settings-daily-news-label', 'settingsDailyNewsTheme');
+  setText('daily-news-option-none', 'newsThemeNone');
+  setText('daily-news-option-music', 'newsThemeMusic');
+  setText('daily-news-option-politics', 'newsThemePolitics');
+  setText('daily-news-option-economy', 'newsThemeEconomy');
+  setText('daily-news-option-art', 'newsThemeArt');
   setText('settings-preferences-item', 'settingsPreferences');
   setText('chat-empty-initial', 'chatEmpty');
   setText('education-chat-empty', 'educationChatEmpty');
@@ -706,6 +876,7 @@ function applyTranslations() {
   const avatarPreview = document.getElementById('profile-photo-preview');
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
+  if (dailyNewsThemeSelect) dailyNewsThemeSelect.value = dailyNewsTheme;
   updateFloatingPrimaryButton();
   renderEducationComposerState();
   setPanelState('idle');
@@ -788,8 +959,20 @@ if (themeToggle) {
   });
 }
 
+if (dailyNewsThemeSelect) {
+  dailyNewsThemeSelect.addEventListener('change', (event) => {
+    dailyNewsTheme = normalizeDailyNewsTheme(event.target.value);
+    persistPreferences();
+    renderHomePage();
+    showToast(t('toastDailyNewsThemeSaved', { theme: getNewsThemeLabel(dailyNewsTheme) }));
+  });
+}
+
 // démarrer en sombre
 applyTheme(false);
+
+const initialPreferences = loadPreferences();
+applyPreferences(initialPreferences);
 
 const initialProfileData = loadProfileData();
 applyProfileData(initialProfileData);
@@ -2315,11 +2498,43 @@ function renderMonthlyPrimaryCards(tasks = []) {
   return tasks.map((task) => (`<button type="button" class="card home-monthly-card" data-home-month-key="${escapeHtml(task.monthKey)}" style="text-align:left;"><div class="card-dot" style="background:var(--accent)"></div><div class="card-body"><div class="card-title">${escapeHtml(task.title)}</div><div class="card-sub">${escapeHtml(formatMonthLabelFromKey(task.monthKey))}</div><div class="home-monthly-meta"><span class="badge badge-purple">${escapeHtml(t('homeMonthlyPrimaryBadge', { count: task.reminderCount }))}</span><span class="home-monthly-subtle">${escapeHtml(t('homeMonthBadge'))}</span></div></div></button>`)).join('');
 }
 
+function getDailyNewsEntry(theme, language = currentLanguage) {
+  const normalizedTheme = normalizeDailyNewsTheme(theme);
+  if (normalizedTheme === 'none') return null;
+
+  const localizedEntries = dailyNewsCatalog[normalizedTheme]?.[language]
+    || dailyNewsCatalog[normalizedTheme]?.fr
+    || [];
+
+  if (!localizedEntries.length) return null;
+
+  const now = new Date();
+  const daySeed = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  return localizedEntries[daySeed % localizedEntries.length];
+}
+
+function renderDailyNewsEmptyState() {
+  return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(t('homeDailyNewsEmptyTitle'))}</div><div class="card-sub">${escapeHtml(t('homeDailyNewsEmptySub'))}</div></div></div>`;
+}
+
+function renderDailyNewsCard() {
+  const entry = getDailyNewsEntry(dailyNewsTheme);
+  if (!entry) return renderDailyNewsEmptyState();
+
+  const formattedDate = new Intl.DateTimeFormat(getCurrentLocale(), {
+    day: 'numeric',
+    month: 'short'
+  }).format(new Date());
+
+  return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(entry.title)}</div><div class="card-sub">${escapeHtml(entry.sub)}</div><div class="home-news-meta"><span class="badge badge-purple">${escapeHtml(t('homeDailyNewsBadge'))}</span><span class="home-monthly-subtle">${escapeHtml(getNewsThemeLabel(dailyNewsTheme))} · ${escapeHtml(formattedDate)}</span></div></div></div>`;
+}
+
 function renderHomePage() {
+  const dailyNewsList = document.getElementById('home-daily-news-list');
   const todayList = document.getElementById('home-today-list');
   const tomorrowList = document.getElementById('home-tomorrow-list');
   const monthlyList = document.getElementById('home-monthly-primary-list');
-  if (!todayList || !tomorrowList || !monthlyList) return;
+  if (!dailyNewsList || !todayList || !tomorrowList || !monthlyList) return;
 
   const today = new Date();
   const tomorrow = new Date(today);
@@ -2336,6 +2551,7 @@ function renderHomePage() {
     .filter(task => task.monthKey === currentMonthKey)
     .sort((left, right) => (right.reminderCount - left.reminderCount) || left.title.localeCompare(right.title));
 
+  dailyNewsList.innerHTML = renderDailyNewsCard();
   todayList.innerHTML = todayEvents.length ? renderHomeEventCards(todayEvents) : renderHomeEmptyState(t('homeEmptyToday'));
   tomorrowList.innerHTML = tomorrowEvents.length ? renderHomeEventCards(tomorrowEvents) : renderHomeEmptyState(t('homeEmptyTomorrow'));
   monthlyList.innerHTML = monthTasks.length ? renderMonthlyPrimaryCards(monthTasks) : renderHomeEmptyState(t('homeEmptyMonthlyPrimary'));

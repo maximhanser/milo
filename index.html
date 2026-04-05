@@ -197,6 +197,29 @@
     color: var(--text3);
   }
 
+  .home-news-card {
+    cursor: default;
+    background: linear-gradient(180deg, rgba(115,143,255,0.14), rgba(62,207,170,0.06));
+    border-color: rgba(115,143,255,0.24);
+  }
+
+  .home-news-card:active {
+    background: linear-gradient(180deg, rgba(115,143,255,0.16), rgba(62,207,170,0.08));
+  }
+
+  .home-news-dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(115,143,255,0.12);
+  }
+
+  .home-news-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
   /* AI Toast */
   .toast {
     position: absolute;
@@ -1155,8 +1178,8 @@
     position: absolute;
     top: 0;
     right: 0;
-    width: 33%;
-    max-width: 140px;
+    width: min(56vw, 220px);
+    max-width: 220px;
     height: 100vh;
     background: var(--bg2);
     border-left: 0.5px solid var(--border);
@@ -1228,6 +1251,35 @@
     margin-bottom: 16px;
     font-size: 12px;
     color: var(--text2);
+  }
+
+  .settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    margin-bottom: 16px;
+  }
+
+  .settings-field-label {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .settings-field-select {
+    width: 100%;
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    appearance: none;
   }
 
   .toggle-switch {
@@ -1809,6 +1861,9 @@
   </div>
 
   <div class="scroll-area">
+    <div class="section-label" id="home-daily-news-label">Daily News</div>
+    <div class="home-list" id="home-daily-news-list"></div>
+
     <div class="section-label" id="home-today-label">Aujourd'hui</div>
     <div class="home-list" id="home-today-list"></div>
 
@@ -2093,6 +2148,17 @@
     <div class="theme-toggle">
       <span id="theme-label">Thème</span>
       <div class="toggle-switch" id="theme-toggle"></div>
+    </div>
+
+    <div class="settings-field">
+      <div class="settings-field-label" id="settings-daily-news-label">Thème Daily News</div>
+      <select class="settings-field-select" id="daily-news-theme">
+        <option value="none" id="daily-news-option-none">Aucun</option>
+        <option value="music" id="daily-news-option-music">Musique</option>
+        <option value="politics" id="daily-news-option-politics">Politique</option>
+        <option value="economy" id="daily-news-option-economy">Économie</option>
+        <option value="art" id="daily-news-option-art">Art</option>
+      </select>
     </div>
 
     <button class="settings-menu-item" id="settings-preferences-item">Préférences</button>
