@@ -52,6 +52,11 @@
     const educationClearFilesBtn = document.getElementById('education-clear-files-btn');
     const educationDocumentInput = document.getElementById('education-document-input');
     const educationSourceTextArea = document.getElementById('education-source-text');
+    const educationInstructionsInput = document.getElementById('education-instructions');
+    const educationSheetLengthSelect = document.getElementById('education-sheet-length');
+    const educationSheetLengthWrap = document.getElementById('education-sheet-length-wrap');
+    const educationGoBtn = document.getElementById('education-go-btn');
+    const educationActionButtons = document.querySelectorAll('[data-education-action]');
     const clearDocBtn = document.getElementById('clear-doc-btn');
     const panelDragState = {
       active: false,
@@ -100,6 +105,8 @@
     let isEducationUploadPanelOpen = false;
     let educationDocuments = [];
     let selectedEducationDocumentId = null;
+    let selectedEducationAction = 'explain';
+    let selectedEducationSheetLength = 'medium';
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
 
@@ -182,6 +189,17 @@
         educationPasteLabel: 'Texte de travail',
         educationSourcePlaceholder: 'Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz.',
         educationDocumentsHelp: 'Importe un document texte ou colle un passage. Le chat IA d\'Éducation utilisera ce contenu comme base de travail.',
+        educationActionExplain: 'Comprendre',
+        educationActionReformulate: 'Reformuler',
+        educationActionSheet: 'Fiche',
+        educationActionQuiz: 'Quiz',
+        educationInstructionsLabel: 'Indications',
+        educationInstructionsPlaceholder: 'Optionnel : précise le ton, le niveau, les points à détailler ou les éléments à éviter.',
+        educationSheetLengthLabel: 'Format de fiche',
+        educationSheetShort: 'Court',
+        educationSheetMedium: 'Moyen',
+        educationSheetLong: 'Long',
+        educationGo: 'Go',
         clearText: 'Effacer le texte',
         educationNoSource: 'Ajoute un texte ou sélectionne un document avant de lancer une consigne d\'étude.',
         unsupportedDocument: 'Importe un document texte (.txt, .md, .csv ou .json).',
@@ -317,6 +335,17 @@
         educationPasteLabel: 'Study text',
         educationSourcePlaceholder: 'Paste a lesson, chapter or excerpt here to create notes, rewrites and quizzes.',
         educationDocumentsHelp: 'Import a text document or paste a passage. The Education AI chat will use this content as its study base.',
+        educationActionExplain: 'Explain',
+        educationActionReformulate: 'Rewrite',
+        educationActionSheet: 'Study sheet',
+        educationActionQuiz: 'Quiz',
+        educationInstructionsLabel: 'Instructions',
+        educationInstructionsPlaceholder: 'Optional: specify the tone, level, points to detail, or elements to avoid.',
+        educationSheetLengthLabel: 'Sheet format',
+        educationSheetShort: 'Short',
+        educationSheetMedium: 'Medium',
+        educationSheetLong: 'Long',
+        educationGo: 'Go',
         clearText: 'Clear text',
         educationNoSource: 'Add text or select a document before asking for a study task.',
         unsupportedDocument: 'Import a text document (.txt, .md, .csv or .json).',
@@ -452,6 +481,17 @@
         educationPasteLabel: 'Texto de estudio',
         educationSourcePlaceholder: 'Pega aqui una leccion, un capitulo o un extracto para crear fichas, reformulaciones y quizzes.',
         educationDocumentsHelp: 'Importa un documento de texto o pega un pasaje. El chat IA de Educacion usara este contenido como base de trabajo.',
+        educationActionExplain: 'Explicar',
+        educationActionReformulate: 'Reformular',
+        educationActionSheet: 'Ficha',
+        educationActionQuiz: 'Quiz',
+        educationInstructionsLabel: 'Indicaciones',
+        educationInstructionsPlaceholder: 'Opcional: precisa el tono, el nivel, los puntos que desarrollar o lo que hay que evitar.',
+        educationSheetLengthLabel: 'Formato de ficha',
+        educationSheetShort: 'Corto',
+        educationSheetMedium: 'Medio',
+        educationSheetLong: 'Largo',
+        educationGo: 'Go',
         clearText: 'Borrar texto',
         educationNoSource: 'Agrega un texto o selecciona un documento antes de pedir una tarea de estudio.',
         unsupportedDocument: 'Importa un documento de texto (.txt, .md, .csv o .json).',
@@ -598,6 +638,16 @@ function applyTranslations() {
   setText('education-card-sub', 'educationCardSub');
   setText('education-chat-btn', 'educationChatButton');
   setText('education-documents-btn', 'educationDocumentsButton');
+  setText('education-action-explain', 'educationActionExplain');
+  setText('education-action-reformulate', 'educationActionReformulate');
+  setText('education-action-sheet', 'educationActionSheet');
+  setText('education-action-quiz', 'educationActionQuiz');
+  setText('education-instructions-label', 'educationInstructionsLabel');
+  setText('education-sheet-length-label', 'educationSheetLengthLabel');
+  setText('education-sheet-option-short', 'educationSheetShort');
+  setText('education-sheet-option-medium', 'educationSheetMedium');
+  setText('education-sheet-option-long', 'educationSheetLong');
+  setText('education-go-btn', 'educationGo');
   if (educationFilesToggle) {
     educationFilesToggle.setAttribute('aria-label', t('educationFilesToggleLabel'));
     educationFilesToggle.setAttribute('title', t('educationFilesToggleLabel'));
@@ -640,6 +690,7 @@ function applyTranslations() {
   setPlaceholder('text-input', 'chatPlaceholder');
   setPlaceholder('education-text-input', 'educationChatPlaceholder');
   setPlaceholder('education-source-text', 'educationSourcePlaceholder');
+  setPlaceholder('education-instructions', 'educationInstructionsPlaceholder');
   setPlaceholder('profile-first-name', 'profileFirstName');
   setPlaceholder('profile-phone', 'profilePhone');
   document.querySelectorAll('.profile-avatar-image').forEach((image) => {
@@ -648,6 +699,7 @@ function applyTranslations() {
   const avatarPreview = document.getElementById('profile-photo-preview');
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
+  renderEducationComposerState();
   setPanelState('idle');
   renderChatHistory();
   renderEducationChatHistory();
@@ -800,6 +852,28 @@ if (educationDropzone && educationDocumentInput) {
 
 if (educationSourceTextArea) {
   educationSourceTextArea.addEventListener('input', persistEducationState);
+}
+
+if (educationInstructionsInput) {
+  educationInstructionsInput.addEventListener('input', persistEducationState);
+}
+
+if (educationSheetLengthSelect) {
+  educationSheetLengthSelect.addEventListener('change', (event) => {
+    selectedEducationSheetLength = event.target.value;
+    renderEducationComposerState();
+    persistEducationState();
+  });
+}
+
+educationActionButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    setEducationAction(button.dataset.educationAction);
+  });
+});
+
+if (educationGoBtn) {
+  educationGoBtn.addEventListener('click', runEducationTask);
 }
 
 if (clearDocBtn) {
@@ -1509,6 +1583,33 @@ function setEducationAgentRequestPending(pending) {
   isEducationAgentRequestPending = pending;
   if (educationSendBtn) educationSendBtn.disabled = pending;
   if (educationTextInput) educationTextInput.disabled = pending;
+  if (educationGoBtn) educationGoBtn.disabled = pending;
+  if (educationInstructionsInput) educationInstructionsInput.disabled = pending;
+  if (educationSourceTextArea) educationSourceTextArea.disabled = pending;
+  if (educationSheetLengthSelect) educationSheetLengthSelect.disabled = pending;
+  educationActionButtons.forEach((button) => {
+    button.disabled = pending;
+  });
+}
+
+function setEducationAction(action) {
+  selectedEducationAction = action;
+  renderEducationComposerState();
+  persistEducationState();
+}
+
+function renderEducationComposerState() {
+  educationActionButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.educationAction === selectedEducationAction);
+  });
+
+  if (educationSheetLengthWrap) {
+    educationSheetLengthWrap.style.display = selectedEducationAction === 'sheet' ? 'flex' : 'none';
+  }
+
+  if (educationSheetLengthSelect) {
+    educationSheetLengthSelect.value = selectedEducationSheetLength;
+  }
 }
 
 function loadEducationState() {
@@ -1526,6 +1627,27 @@ function loadEducationState() {
     if (educationSourceTextArea) educationSourceTextArea.value = '';
   }
 
+  try {
+    const rawInstructions = window.localStorage.getItem('milo.educationInstructions') || '';
+    if (educationInstructionsInput) educationInstructionsInput.value = rawInstructions;
+  } catch {
+    if (educationInstructionsInput) educationInstructionsInput.value = '';
+  }
+
+  try {
+    const rawAction = window.localStorage.getItem('milo.educationAction');
+    if (['explain', 'reformulate', 'sheet', 'quiz'].includes(rawAction)) {
+      selectedEducationAction = rawAction;
+    }
+  } catch {}
+
+  try {
+    const rawLength = window.localStorage.getItem('milo.educationSheetLength');
+    if (['short', 'medium', 'long'].includes(rawLength)) {
+      selectedEducationSheetLength = rawLength;
+    }
+  } catch {}
+
   selectedEducationDocumentId = educationDocuments[0]?.id || null;
   setEducationUploadPanelOpen(educationDocuments.length > 0);
 }
@@ -1533,6 +1655,9 @@ function loadEducationState() {
 function persistEducationState() {
   window.localStorage.setItem(educationDocumentsStorageKey, JSON.stringify(educationDocuments));
   window.localStorage.setItem(educationSourceStorageKey, educationSourceTextArea?.value || '');
+  window.localStorage.setItem('milo.educationInstructions', educationInstructionsInput?.value || '');
+  window.localStorage.setItem('milo.educationAction', selectedEducationAction);
+  window.localStorage.setItem('milo.educationSheetLength', selectedEducationSheetLength);
 }
 
 function renderDocumentsList() {
@@ -1642,6 +1767,71 @@ function clearEducationSourceText() {
     educationSourceTextArea.value = '';
   }
   persistEducationState();
+}
+
+function getEducationTaskPrompt() {
+  const extraInstructions = educationInstructionsInput?.value.trim() || '';
+  let basePrompt = '';
+
+  if (currentLanguage === 'en') {
+    if (selectedEducationAction === 'explain') {
+      basePrompt = 'Explain this text or document clearly to make it easier to understand.';
+    } else if (selectedEducationAction === 'reformulate') {
+      basePrompt = 'Rewrite this text or document while preserving its format, meaning, and key content.';
+    } else if (selectedEducationAction === 'sheet') {
+      const lengthLabel = selectedEducationSheetLength === 'short' ? 'short' : selectedEducationSheetLength === 'long' ? 'long' : 'medium';
+      basePrompt = `Create a ${lengthLabel} study sheet from this text or document.`;
+    } else {
+      basePrompt = 'Create a quiz based on this text or document, with the answers listed below the questions.';
+    }
+  } else if (currentLanguage === 'es') {
+    if (selectedEducationAction === 'explain') {
+      basePrompt = 'Explica este texto o documento de forma clara para facilitar la comprension.';
+    } else if (selectedEducationAction === 'reformulate') {
+      basePrompt = 'Reformula este texto o documento manteniendo su formato, su sentido y su contenido importante.';
+    } else if (selectedEducationAction === 'sheet') {
+      const lengthLabel = selectedEducationSheetLength === 'short' ? 'corta' : selectedEducationSheetLength === 'long' ? 'larga' : 'media';
+      basePrompt = `Crea una ficha de revision ${lengthLabel} a partir de este texto o documento.`;
+    } else {
+      basePrompt = 'Crea un quiz a partir de este texto o documento, con las respuestas debajo de las preguntas.';
+    }
+  } else {
+    if (selectedEducationAction === 'explain') {
+      basePrompt = 'Explique ce texte ou document de manière claire pour aider à la compréhension.';
+    } else if (selectedEducationAction === 'reformulate') {
+      basePrompt = 'Reformule ce texte ou document en gardant son format, son sens et son contenu important.';
+    } else if (selectedEducationAction === 'sheet') {
+      const lengthLabel = selectedEducationSheetLength === 'short' ? 'courte' : selectedEducationSheetLength === 'long' ? 'longue' : 'moyenne';
+      basePrompt = `Crée une fiche de révision ${lengthLabel} à partir de ce texte ou document.`;
+    } else {
+      basePrompt = 'Crée un quiz à partir de ce texte ou document, avec les réponses plus bas.';
+    }
+  }
+
+  if (!extraInstructions) return basePrompt;
+  if (currentLanguage === 'en') return `${basePrompt} Additional instructions: ${extraInstructions}`;
+  if (currentLanguage === 'es') return `${basePrompt} Indicaciones adicionales: ${extraInstructions}`;
+  return `${basePrompt} Indications supplémentaires : ${extraInstructions}`;
+}
+
+function runEducationTask() {
+  if (isEducationAgentRequestPending) {
+    showToast(t('educationChatThinking'));
+    return;
+  }
+
+  const studyContext = getEducationStudyContext();
+  if (!studyContext.pastedText && !studyContext.documents.length) {
+    showToast(t('educationNoSource'));
+    return;
+  }
+
+  const prompt = getEducationTaskPrompt();
+  if (!prompt) return;
+
+  openPanelSection('education-chat');
+  addMessageToEducationHistory('user', prompt);
+  sendCommand(prompt, 'education-text');
 }
 
 function removeEducationDocument(documentId) {

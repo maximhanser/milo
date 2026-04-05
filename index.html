@@ -1252,39 +1252,58 @@
 
   /* Education page */
   .education-content {
-    display: flex;
-    padding: 0;
+    display: block;
+    padding: 0 20px 120px;
   }
 
-  .sidebar {
-    width: 25%;
-    background: var(--bg2);
-    border-right: 0.5px solid var(--border);
-    padding: 20px;
+  .education-workspace {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
 
-  .sidebar-btn {
+  .education-action-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .education-action-btn {
     background: var(--bg3);
     border: 0.5px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 12px 16px;
+    padding: 12px 10px;
     color: var(--text);
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 500;
     font-family: 'DM Sans', sans-serif;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
   }
 
-  .sidebar-btn:active {
-    background: var(--bg);
+  .education-action-btn.active {
+    background: rgba(124,109,240,0.18);
+    border-color: rgba(124,109,240,0.4);
   }
 
-  .main-content {
-    flex: 1;
-    padding: 0 20px 120px;
+  .education-action-btn:active {
+    transform: scale(0.98);
+  }
+
+  .education-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 18px;
+    border: 0.5px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .documents-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
   .document-source-card {
@@ -1301,6 +1320,38 @@
   .education-source-textarea {
     min-height: 150px;
     resize: vertical;
+  }
+
+  .education-instructions-textarea {
+    min-height: 104px;
+    resize: vertical;
+  }
+
+  .task-editor-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .task-editor-textarea,
+  .education-sheet-length-select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .education-sheet-length-select {
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .education-go-btn {
+    margin-top: 4px;
   }
 
   .documents-help {
@@ -1913,11 +1964,7 @@
   </div>
 
   <div class="scroll-area education-content">
-    <div class="sidebar">
-      <button class="sidebar-btn" id="education-chat-btn" onclick="openPanelSection('education-chat')">Chat IA</button>
-      <button class="sidebar-btn" id="education-documents-btn" onclick="openPanelSection('documents')">Documents</button>
-    </div>
-    <div class="main-content">
+    <div class="education-workspace">
       <div class="section-label" id="education-welcome-label">Bienvenue dans Éducation</div>
       <div class="card">
         <div class="card-dot" style="background:var(--teal)"></div>
@@ -1926,6 +1973,45 @@
           <div class="card-sub" id="education-card-sub">Chat IA pour poser des questions sur vos documents</div>
         </div>
       </div>
+
+      <div class="education-action-row">
+        <button type="button" class="education-action-btn active" id="education-action-explain" data-education-action="explain">Comprendre</button>
+        <button type="button" class="education-action-btn" id="education-action-reformulate" data-education-action="reformulate">Reformuler</button>
+        <button type="button" class="education-action-btn" id="education-action-sheet" data-education-action="sheet">Fiche</button>
+        <button type="button" class="education-action-btn" id="education-action-quiz" data-education-action="quiz">Quiz</button>
+      </div>
+
+      <div class="education-field" id="education-sheet-length-wrap" style="display: none;">
+        <div class="task-editor-label" id="education-sheet-length-label">Format de fiche</div>
+        <select class="education-sheet-length-select" id="education-sheet-length">
+          <option value="short" id="education-sheet-option-short">Court</option>
+          <option value="medium" id="education-sheet-option-medium">Moyen</option>
+          <option value="long" id="education-sheet-option-long">Long</option>
+        </select>
+      </div>
+
+      <div class="education-field">
+        <div class="task-editor-label" id="education-instructions-label">Indications</div>
+        <textarea class="task-editor-textarea education-instructions-textarea" id="education-instructions" placeholder="Optionnel : précise le ton, le niveau, les points à détailler ou les éléments à éviter."></textarea>
+      </div>
+
+      <div class="document-source-card">
+        <div class="documents-controls">
+          <button class="planning-switch-btn" id="upload-doc-btn">Télécharger document</button>
+          <button class="planning-switch-btn" id="clear-doc-btn">Effacer le texte</button>
+        </div>
+        <input type="file" id="education-document-input" multiple accept=".txt,.md,.csv,.json,text/plain,text/markdown,application/json,text/csv" style="display: none;" />
+        <div class="task-editor-label" id="education-paste-label">Texte de travail</div>
+        <textarea class="task-editor-textarea education-source-textarea" id="education-source-text" placeholder="Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz."></textarea>
+        <div class="documents-help" id="documents-help-text">Importe un document texte ou colle un passage. Le chat IA d'Éducation utilisera ce contenu comme base de travail.</div>
+        <div class="documents-list" id="documents-list">
+          <div style="color: var(--text3); text-align: center; padding: 20px;">
+            <span id="documents-empty-text">Aucun document ou dossier</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="profile-save-btn education-go-btn" id="education-go-btn" type="button">Go</button>
     </div>
   </div>
   </div>
@@ -2055,20 +2141,8 @@
 
     <!-- Documents section -->
     <div id="panel-documents" class="panel-section" style="display: none;">
-      <div class="documents-controls">
-        <button class="planning-switch-btn" id="upload-doc-btn">Télécharger document</button>
-        <button class="planning-switch-btn" id="clear-doc-btn">Effacer le texte</button>
-      </div>
-      <input type="file" id="education-document-input" multiple accept=".txt,.md,.csv,.json,text/plain,text/markdown,application/json,text/csv" style="display: none;" />
-      <div class="document-source-card">
-        <div class="task-editor-label" id="education-paste-label">Texte de travail</div>
-        <textarea class="task-editor-textarea education-source-textarea" id="education-source-text" placeholder="Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz."></textarea>
-        <div class="documents-help" id="documents-help-text">Importe un document texte ou colle un passage. Le chat IA d'Éducation utilisera ce contenu comme base de travail.</div>
-      </div>
-      <div class="documents-list" id="documents-list">
-        <div style="color: var(--text3); text-align: center; padding: 20px;">
-          <span id="documents-empty-text">Aucun document ou dossier</span>
-        </div>
+      <div style="color: var(--text2); text-align: center; padding: 40px 20px; line-height: 1.6;">
+        Utilise la page Éducation pour choisir l'action, ajouter un document ou coller un texte, puis lance Go.
       </div>
     </div>
 
