@@ -837,19 +837,64 @@
     position: relative;
     width: 100%;
     height: 100%;
-    padding: 10px 12px;
+    padding: 8px 10px 8px 12px;
     border-radius: 14px;
     background: linear-gradient(180deg, rgba(124,109,240,0.28), rgba(124,109,240,0.18));
     border: 0.5px solid rgba(124,109,240,0.38);
     box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateX(calc(-1 * var(--swipe-translate)));
+    transition: transform 0.22s ease;
+  }
+
+  .agenda-event-main {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 4px;
-    transform: translateX(calc(-1 * var(--swipe-translate)));
-    transition: transform 0.22s ease;
     text-align: left;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .agenda-event-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(240,239,245,0.82);
+    background: transparent;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .agenda-event-check::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 10px;
+    border-right: 2px solid transparent;
+    border-bottom: 2px solid transparent;
+    transform: translate(-50%, -60%) rotate(45deg);
+  }
+
+  .agenda-event-check.checked {
+    background: var(--teal);
+    border-color: var(--teal);
+  }
+
+  .agenda-event-check.checked::after {
+    border-right-color: #08120f;
+    border-bottom-color: #08120f;
   }
 
   .agenda-event.active .agenda-event-content {
@@ -1489,6 +1534,64 @@
     height: 16px;
   }
 
+  .progress-page-content {
+    flex: 1;
+    min-height: 0;
+    padding: 0 20px 120px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .progress-page-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  .progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .progress-event-card {
+    width: 100%;
+    border: 0.5px solid rgba(62,207,170,0.28);
+    background: linear-gradient(180deg, rgba(62,207,170,0.14), rgba(62,207,170,0.06));
+    border-radius: 16px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+  }
+
+  .progress-event-open {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-family: 'DM Sans', sans-serif;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .progress-event-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .progress-empty {
+    position: static;
+    left: auto;
+    right: auto;
+    top: auto;
+  }
+
   .dev-page-content {
     flex: 1;
     min-height: 0;
@@ -1590,7 +1693,37 @@
     <div class="app-name" id="progress-page-title">Progress</div>
   </div>
 
-  <div class="dev-page-content"></div>
+  <div class="progress-page-content">
+    <div class="section-label" id="progress-section-label">Tâches terminées</div>
+    <div class="progress-list" id="progress-completed-list"></div>
+    <div class="task-modal-backdrop" id="progress-task-modal-backdrop">
+      <div class="task-modal" id="progress-task-modal" role="dialog" aria-modal="true" aria-labelledby="progress-task-modal-title">
+        <div class="task-modal-header">
+          <div class="task-modal-title" id="progress-task-modal-title">Tâche</div>
+          <button type="button" class="task-modal-close" id="progress-task-modal-close">×</button>
+        </div>
+        <div class="task-modal-field">
+          <div class="task-modal-label" id="progress-task-title-label">Titre</div>
+          <div class="task-modal-value" id="progress-task-title-value"></div>
+        </div>
+        <div class="task-modal-field" style="margin-top: 10px;">
+          <div class="task-modal-label" id="progress-task-description-label">Description</div>
+          <div class="task-modal-value task-modal-empty" id="progress-task-description-value"></div>
+        </div>
+        <div class="task-modal-field" style="margin-top: 10px;">
+          <div class="task-modal-label" id="progress-task-scheduled-label">Date de réalisation</div>
+          <div class="task-modal-value" id="progress-task-scheduled-value"></div>
+        </div>
+        <div class="task-modal-field" style="margin-top: 10px;">
+          <div class="task-modal-label" id="progress-task-completed-label">Date cochée</div>
+          <div class="task-modal-value" id="progress-task-completed-value"></div>
+        </div>
+        <div class="task-modal-actions">
+          <button type="button" class="task-modal-btn secondary" id="progress-task-modal-cancel">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
 
   <!-- PAGE: Infos personnelles -->
@@ -1653,8 +1786,9 @@
     <div class="profile-field">
       <div class="profile-field-label" id="profile-language-label">Langue</div>
       <select class="profile-field-select" id="profile-language">
-        <option value="Français" id="profile-language-option-fr">Français</option>
-        <option value="English" id="profile-language-option-en">English</option>
+        <option value="fr" id="profile-language-option-fr">Français</option>
+        <option value="en" id="profile-language-option-en">English</option>
+        <option value="es" id="profile-language-option-es">Español</option>
       </select>
     </div>
     <div class="profile-field">

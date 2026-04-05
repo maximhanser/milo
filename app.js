@@ -24,6 +24,10 @@
       activeEventId: null,
       dragging: false
     };
+    let progressTaskModalState = {
+      open: false,
+      eventId: null
+    };
 
     const panel = document.getElementById('panel');
     const panelHandle = document.getElementById('panel-handle');
@@ -128,6 +132,8 @@
         homeCard4Sub: '19h00 · 1h',
         homeCard4Badge: 'Planifié par Milo',
         progressTitle: 'Progress',
+        progressSection: 'Tâches terminées',
+        progressEmpty: 'Aucune tâche terminée pour le moment.',
         profileTitle: 'Profil',
         profileHeroTitle: 'Ton espace personnel',
         profileHeroSubtitle: 'Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.',
@@ -196,6 +202,10 @@
         taskModalReadTitle: 'Détail de la tâche',
         taskModalEditTitle: 'Modifier la tâche',
         taskModalEmptyDescription: 'Aucune description ajoutée.',
+        taskScheduledDate: 'Date de réalisation',
+        taskCompletedDate: 'Date cochée',
+        taskCompleteAria: 'Valider la tâche',
+        taskUncompleteAria: 'Remettre la tâche dans l agenda',
         taskModalClose: 'Fermer',
         taskModalSave: 'Enregistrer',
         weekday1: 'Lun', weekday2: 'Mar', weekday3: 'Mer', weekday4: 'Jeu', weekday5: 'Ven', weekday6: 'Sam', weekday7: 'Dim',
@@ -257,6 +267,8 @@
         homeCard4Sub: '7:00 PM · 1h',
         homeCard4Badge: 'Planned by Milo',
         progressTitle: 'Progress',
+        progressSection: 'Completed tasks',
+        progressEmpty: 'No completed task yet.',
         profileTitle: 'Profile',
         profileHeroTitle: 'Your personal space',
         profileHeroSubtitle: 'Find your main profile information here in a full dedicated page, just like Education.',
@@ -325,6 +337,10 @@
         taskModalReadTitle: 'Task details',
         taskModalEditTitle: 'Edit task',
         taskModalEmptyDescription: 'No description added.',
+        taskScheduledDate: 'Scheduled date',
+        taskCompletedDate: 'Checked date',
+        taskCompleteAria: 'Mark task as completed',
+        taskUncompleteAria: 'Move task back to agenda',
         taskModalClose: 'Close',
         taskModalSave: 'Save',
         weekday1: 'Mon', weekday2: 'Tue', weekday3: 'Wed', weekday4: 'Thu', weekday5: 'Fri', weekday6: 'Sat', weekday7: 'Sun',
@@ -354,15 +370,162 @@
         promptTaskTime: 'Time (HH:mm):',
         promptTimeInvalid: 'Invalid format. Use HH:mm',
         untitledTask: 'Untitled'
+      },
+      es: {
+        navHome: 'Inicio',
+        navPlanning: 'Planificacion',
+        navEducation: 'Educacion',
+        navProgress: 'Progreso',
+        homeToday: 'Hoy',
+        homeTomorrow: 'Manana',
+        homeMonthlyPrimary: 'Tareas principales mensuales',
+        homeEmptyToday: 'No hay tareas previstas hoy.',
+        homeEmptyTomorrow: 'No hay tareas previstas manana.',
+        homeEmptyMonthlyPrimary: 'No hay tareas principales para este mes.',
+        homeEmptyKicker: 'Sin recordatorio',
+        homeMonthlyPrimaryBadge: '{count} recordatorios este mes',
+        homeMonthBadge: 'Mes activo',
+        monthlyTaskSuggestion: 'Acabo de crear {count} recordatorios este mes para {title}. Quieres que tambien lo anada a tu lista de tareas principales mensuales? Responde si o no.',
+        monthlyTaskAddedConfirm: '{title} se anadio a tu lista de tareas principales mensuales.',
+        monthlyTaskSkippedConfirm: 'De acuerdo, no lo anado a la lista mensual.',
+        monthlyTaskClarify: 'Responde simplemente si o no para decirme si debo anadir esta tarea a la lista mensual.',
+        homeCard1Title: 'Revision - Matematicas',
+        homeCard1Sub: '14:00 · 45 min',
+        homeCard1Badge: 'Planificado por Milo',
+        homeCard2Title: 'Compras por hacer',
+        homeCard2Sub: 'Leche, pan, tomates...',
+        homeCard2Badge: 'Recordatorio 18:00',
+        homeCard3Title: 'Deporte - Running',
+        homeCard3Sub: '07:30 · 30 min',
+        homeCard3Badge: 'Objetivo semanal',
+        homeCard4Title: 'Revision - Historia',
+        homeCard4Sub: '19:00 · 1 h',
+        homeCard4Badge: 'Planificado por Milo',
+        progressTitle: 'Progreso',
+        progressSection: 'Tareas completadas',
+        progressEmpty: 'Todavia no hay tareas completadas.',
+        profileTitle: 'Perfil',
+        profileHeroTitle: 'Tu espacio personal',
+        profileHeroSubtitle: 'Encuentra aqui la informacion principal de tu perfil en una pagina dedicada, igual que Educacion.',
+        profileSection: 'Perfil',
+        profileFirstName: 'Nombre',
+        profileEmail: 'Correo',
+        profilePhone: 'Telefono',
+        profilePhoto: 'Foto de perfil',
+        profilePhotoName: 'Foto actual',
+        profilePhotoHelp: 'Solo JPEG o PNG',
+        profileImport: 'Importar',
+        profileRemove: 'Quitar',
+        profilePreferences: 'Preferencias',
+        profileLanguage: 'Idioma',
+        profileAccount: 'Cuenta',
+        languageOptionFr: 'Frances',
+        languageOptionEn: 'Ingles',
+        languageOptionEs: 'Espanol',
+        accountPersonal: 'Personal',
+        accountStudent: 'Estudiante',
+        accountProfessional: 'Profesional',
+        profileSave: 'Guardar',
+        educationTitle: 'Educacion',
+        educationWelcome: 'Bienvenido a Educacion',
+        educationCardTitle: 'Usa la barra lateral para acceder a las funciones',
+        educationCardSub: 'Chat con IA para hacer preguntas sobre tus documentos',
+        educationChatButton: 'Chat IA',
+        educationDocumentsButton: 'Documentos',
+        educationChatEmpty: 'Todavia no hay conversacion',
+        educationChatIdle: 'Pega un texto o elige un documento y luego pide una ficha, una reformulacion o un quiz.',
+        educationChatThinking: 'Milo Educacion esta preparando tu respuesta...',
+        educationChatPlaceholder: 'Pide una ficha, un quiz o una reformulacion...',
+        educationDownloadPdf: 'Descargar PDF',
+        educationPdfFallbackTitle: 'Documento Milo Educacion',
+        educationPdfUnavailable: 'El modulo PDF no esta disponible por ahora.',
+        educationFilesToggleLabel: 'Agregar archivos',
+        educationDropzoneTitle: 'Suelta hasta 3 archivos',
+        educationDropzoneHelp: 'TXT, MD, CSV o JSON. Luego puedes anadir una consigna en el chat.',
+        educationFilesCount: '{count}/3 archivos',
+        educationFilesEmpty: 'No se ha agregado ningun archivo',
+        educationClearFiles: 'Vaciar archivos',
+        educationFilesLimit: 'Puedes agregar hasta 3 archivos como maximo.',
+        educationPasteLabel: 'Texto de estudio',
+        educationSourcePlaceholder: 'Pega aqui una leccion, un capitulo o un extracto para crear fichas, reformulaciones y quizzes.',
+        educationDocumentsHelp: 'Importa un documento de texto o pega un pasaje. El chat IA de Educacion usara este contenido como base de trabajo.',
+        clearText: 'Borrar texto',
+        educationNoSource: 'Agrega un texto o selecciona un documento antes de pedir una tarea de estudio.',
+        unsupportedDocument: 'Importa un documento de texto (.txt, .md, .csv o .json).',
+        importedDocumentMeta: '{count} caracteres',
+        settingsTitle: 'Ajustes',
+        settingsTheme: 'Tema',
+        settingsPreferences: 'Preferencias',
+        chatEmpty: 'Todavia no hay conversacion',
+        chatIdle: 'Escribe un mensaje o habla con Milo',
+        chatListening: 'Te escucho...',
+        chatThinking: 'Milo esta pensando...',
+        chatPlaceholder: 'Escribe a Milo...',
+        planningDay: 'Dia',
+        planningMonth: 'Mes',
+        planningNewTask: '+ Nueva tarea',
+        taskTitle: 'Titulo',
+        taskDescription: 'Descripcion',
+        taskTitlePlaceholder: 'Titulo de la tarea',
+        taskDescriptionPlaceholder: 'Agregar una descripcion',
+        taskPlaceholder: 'Toca una tarea para abrir sus detalles.',
+        taskModalReadTitle: 'Detalle de la tarea',
+        taskModalEditTitle: 'Editar tarea',
+        taskModalEmptyDescription: 'No se ha agregado ninguna descripcion.',
+        taskScheduledDate: 'Fecha de realizacion',
+        taskCompletedDate: 'Fecha marcada',
+        taskCompleteAria: 'Marcar la tarea como completada',
+        taskUncompleteAria: 'Devolver la tarea a la agenda',
+        taskModalClose: 'Cerrar',
+        taskModalSave: 'Guardar',
+        weekday1: 'Lun', weekday2: 'Mar', weekday3: 'Mie', weekday4: 'Jue', weekday5: 'Vie', weekday6: 'Sab', weekday7: 'Dom',
+        createFolder: 'Crear carpeta',
+        uploadDocument: 'Subir documento',
+        documentsEmpty: 'Ningun documento o carpeta',
+        settingsDev: 'Ajustes en desarrollo',
+        avatarAlt: 'Foto de perfil',
+        avatarPreviewAlt: 'Vista previa de la foto de perfil',
+        panelChat: 'Milo',
+        panelEducationChat: 'Milo Educacion',
+        panelPlanning: 'Planificacion',
+        panelDocuments: 'Documentos',
+        panelSettings: 'Ajustes',
+        toastLight: 'Modo claro activado',
+        toastDark: 'Modo oscuro activado',
+        toastProfileSaved: 'Perfil guardado',
+        toastImportImage: 'Importa un archivo JPEG o PNG',
+        toastSpeechUnavailable: 'El reconocimiento de voz no esta disponible.',
+        chatUnknown: 'No he entendido.',
+        errorServerPrefix: 'Error del servidor: ',
+        reminderDefaultTitle: 'Recordatorio',
+        reminderConfirm: 'De acuerdo, voy a anadir un recordatorio a las {time} para: {title}',
+        voiceAddedMeta: 'Anadido por comando de voz',
+        noTasksToday: 'No hay tareas para este dia. Anade una para colocarla en tu horario.',
+        promptTaskTitle: 'Titulo de la tarea:',
+        promptTaskTime: 'Hora (HH:mm):',
+        promptTimeInvalid: 'Formato no valido. Usa HH:mm',
+        untitledTask: 'Sin titulo'
       }
     };
 
 function normalizeAppLanguage(value) {
-  return value === 'English' ? 'en' : 'fr';
+  const normalizedValue = String(value || '').trim().toLowerCase();
+
+  if (['en', 'english', 'anglais', 'ingles'].includes(normalizedValue)) {
+    return 'en';
+  }
+
+  if (['es', 'espanol', 'español', 'spanish', 'espagnol'].includes(normalizedValue)) {
+    return 'es';
+  }
+
+  return 'fr';
 }
 
 function getCurrentLocale() {
-  return currentLanguage === 'en' ? 'en-US' : 'fr-FR';
+  if (currentLanguage === 'en') return 'en-US';
+  if (currentLanguage === 'es') return 'es-ES';
+  return 'fr-FR';
 }
 
 function t(key, vars = {}) {
@@ -382,7 +545,7 @@ function setPlaceholder(id, key) {
 }
 
 function applyTranslations() {
-  document.documentElement.lang = currentLanguage === 'en' ? 'en' : 'fr';
+  document.documentElement.lang = currentLanguage;
   setText('home-today-label', 'homeToday');
   setText('home-tomorrow-label', 'homeTomorrow');
   setText('home-monthly-primary-label', 'homeMonthlyPrimary');
@@ -399,6 +562,7 @@ function applyTranslations() {
   setText('home-card-4-sub', 'homeCard4Sub');
   setText('home-card-4-badge', 'homeCard4Badge');
   setText('progress-page-title', 'progressTitle');
+  setText('progress-section-label', 'progressSection');
   setText('profile-page-title', 'profileTitle');
   setText('profile-hero-title', 'profileHeroTitle');
   setText('profile-hero-subtitle', 'profileHeroSubtitle');
@@ -448,6 +612,10 @@ function applyTranslations() {
   setText('btn-new-task', 'planningNewTask');
   setText('task-title-label', 'taskTitle');
   setText('task-description-label', 'taskDescription');
+  setText('progress-task-title-label', 'taskTitle');
+  setText('progress-task-description-label', 'taskDescription');
+  setText('progress-task-scheduled-label', 'taskScheduledDate');
+  setText('progress-task-completed-label', 'taskCompletedDate');
   setPlaceholder('task-title-input', 'taskTitlePlaceholder');
   setPlaceholder('task-description-input', 'taskDescriptionPlaceholder');
   setText('task-modal-cancel', 'taskModalClose');
@@ -496,6 +664,7 @@ function applyTranslations() {
     }
   }
   renderHomePage();
+  renderProgressPage();
 }
 
 function applyLanguage(languageValue) {
@@ -721,6 +890,7 @@ function showAvatarDevPage() {
   document.getElementById('personal-info-page').style.display = 'none';
   document.getElementById('avatar-dev-page').style.display = 'flex';
   if (miloBtnWrap) miloBtnWrap.style.display = 'none';
+  renderProgressPage();
 }
 
 function getDefaultAvatarData() {
@@ -740,7 +910,7 @@ function getDefaultProfile() {
     firstName: 'Maxim',
     email: 'maxim@example.com',
     phone: '',
-    language: 'Français',
+    language: 'fr',
     accountType: 'Personnel',
     photo: ''
   };
@@ -755,7 +925,12 @@ function loadProfileData() {
       return defaults;
     }
 
-    return { ...defaults, ...JSON.parse(rawProfile) };
+    const parsedProfile = JSON.parse(rawProfile);
+    return {
+      ...defaults,
+      ...parsedProfile,
+      language: normalizeAppLanguage(parsedProfile.language || defaults.language)
+    };
   } catch {
     return defaults;
   }
@@ -766,7 +941,7 @@ function applyProfileData(profile) {
   if (profileFirstNameInput) profileFirstNameInput.value = profile.firstName || '';
   if (profileEmailInput) profileEmailInput.value = profile.email || '';
   if (profilePhoneInput) profilePhoneInput.value = profile.phone || '';
-  if (profileLanguageSelect) profileLanguageSelect.value = profile.language || 'Français';
+  if (profileLanguageSelect) profileLanguageSelect.value = normalizeAppLanguage(profile.language);
   if (profileAccountTypeSelect) profileAccountTypeSelect.value = profile.accountType || 'Personnel';
   updateAvatarImages(currentProfilePhotoData);
 }
@@ -778,7 +953,7 @@ function collectProfileData(options = {}) {
     firstName: profileFirstNameInput?.value.trim() || '',
     email: profileEmailInput?.value.trim() || '',
     phone: profilePhoneInput?.value.trim() || '',
-    language: profileLanguageSelect?.value || 'Français',
+    language: normalizeAppLanguage(profileLanguageSelect?.value),
     accountType: profileAccountTypeSelect?.value || 'Personnel',
     photo: includePhoto ? (currentProfilePhotoData || '') : ''
   };
@@ -1720,6 +1895,18 @@ function persistPlanningState() {
   }));
 }
 
+function isPlanningEventCompleted(event) {
+  return typeof event?.completedAt === 'number' && Number.isFinite(event.completedAt) && event.completedAt > 0;
+}
+
+function getActivePlanningEvents(events = planningState.events) {
+  return events.filter((event) => !isPlanningEventCompleted(event));
+}
+
+function getCompletedPlanningEvents(events = planningState.events) {
+  return events.filter((event) => isPlanningEventCompleted(event));
+}
+
 function loadMonthlyPrimaryTasks() {
   try {
     const rawTasks = window.localStorage.getItem(monthlyPrimaryTasksStorageKey);
@@ -1837,8 +2024,9 @@ function renderHomePage() {
   const currentMonthKey = getCurrentHomeMonthKey();
 
   const sortByTime = (left, right) => (left.time || '').localeCompare(right.time || '');
-  const todayEvents = planningState.events.filter(event => event.date === todayKey).sort(sortByTime);
-  const tomorrowEvents = planningState.events.filter(event => event.date === tomorrowKey).sort(sortByTime);
+  const activeEvents = getActivePlanningEvents();
+  const todayEvents = activeEvents.filter(event => event.date === todayKey).sort(sortByTime);
+  const tomorrowEvents = activeEvents.filter(event => event.date === tomorrowKey).sort(sortByTime);
   const monthTasks = monthlyPrimaryTasks
     .filter(task => task.monthKey === currentMonthKey)
     .sort((left, right) => (right.reminderCount - left.reminderCount) || left.title.localeCompare(right.title));
@@ -1964,11 +2152,13 @@ function applyAgentActions(actions = []) {
       if (!action?.event) return;
 
       const existingEvent = planningState.events.find((event) => (
+        !isPlanningEventCompleted(event)
+        && (
         event.date === action.event.date
         && event.time === action.event.time
         && event.title === action.event.title
         && event.description === (action.event.description || '')
-      ));
+      )));
 
       if (existingEvent) {
         planningState.selectedEventId = existingEvent.id;
@@ -2185,7 +2375,8 @@ function createPlanningEvent({ date, time, title, description = '', meta = '' })
     time: normalizedTime || time,
     title,
     description,
-    meta
+    meta,
+    completedAt: null
   };
 }
 
@@ -2203,6 +2394,10 @@ function ensurePlanningEventsStructure() {
 
     if (typeof event.meta !== 'string') {
       event.meta = '';
+    }
+
+    if (!Number.isFinite(event.completedAt)) {
+      event.completedAt = null;
     }
 
     const normalizedTime = normalizeTimeString(event.time);
@@ -2256,7 +2451,7 @@ function openPlanningDay(dateKey) {
 
   planningState.currentDate = new Date(year, month - 1, day);
   planningState.view = 'day';
-  const dayEvents = planningState.events
+  const dayEvents = getActivePlanningEvents()
     .filter(event => event.date === dateKey)
     .sort((a, b) => a.time.localeCompare(b.time));
   planningState.selectedEventId = dayEvents[0]?.id || null;
@@ -2278,7 +2473,7 @@ function renderDayAgenda(events) {
     const swipeTranslate = isSwiped ? '50%' : '0%';
     const actionsTranslate = isSwiped ? '0%' : '100%';
     const actionsOpacity = isSwiped ? '1' : '0';
-    return `<div class="agenda-event ${isActive} ${isSwiped}" data-event-id="${event.id}" style="top: ${top}px; height: ${DAY_EVENT_HEIGHT}px; --swipe-translate: ${swipeTranslate}; --actions-translate: ${actionsTranslate}; --actions-opacity: ${actionsOpacity};"><div class="agenda-event-track"><div class="agenda-event-actions"><button type="button" class="agenda-event-action edit" data-edit-event-id="${event.id}">✎</button><button type="button" class="agenda-event-action delete" data-delete-event-id="${event.id}">×</button></div><button type="button" class="agenda-event-content" data-open-event-id="${event.id}"><div class="agenda-name">${event.title}</div></button></div></div>`;
+    return `<div class="agenda-event ${isActive} ${isSwiped}" data-event-id="${event.id}" style="top: ${top}px; height: ${DAY_EVENT_HEIGHT}px; --swipe-translate: ${swipeTranslate}; --actions-translate: ${actionsTranslate}; --actions-opacity: ${actionsOpacity};"><div class="agenda-event-track"><div class="agenda-event-actions"><button type="button" class="agenda-event-action edit" data-edit-event-id="${event.id}">✎</button><button type="button" class="agenda-event-action delete" data-delete-event-id="${event.id}">×</button></div><div class="agenda-event-content"><button type="button" class="agenda-event-main" data-open-event-id="${event.id}"><div class="agenda-event-time">${escapeHtml(event.time || '')}</div><div class="agenda-name">${escapeHtml(event.title || t('untitledTask'))}</div></button><button type="button" class="agenda-event-check" data-complete-event-id="${event.id}" aria-label="${escapeHtml(t('taskCompleteAria'))}"></button></div></div></div>`;
   }).join('');
 
   const emptyState = events.length
@@ -2314,6 +2509,12 @@ function closeTaskModal() {
   taskModalState.mode = 'view';
   taskModalState.eventId = null;
   renderTaskModal();
+}
+
+function closeProgressTaskModal() {
+  progressTaskModalState.open = false;
+  progressTaskModalState.eventId = null;
+  renderProgressTaskModal();
 }
 
 function openTaskModal(eventId, mode = 'view') {
@@ -2362,6 +2563,72 @@ function renderTaskModal() {
   saveButton.style.display = isEditMode ? 'inline-flex' : 'none';
 }
 
+function formatTaskDateLabel(dateKey, time = '') {
+  if (!dateKey) return '—';
+
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return dateKey;
+
+  const taskDate = new Date(year, month - 1, day);
+  const formattedDate = taskDate.toLocaleDateString(getCurrentLocale(), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  return time ? `${formattedDate} · ${time}` : formattedDate;
+}
+
+function formatCompletionDateLabel(timestamp) {
+  if (!Number.isFinite(timestamp)) return '—';
+  return new Date(timestamp).toLocaleString(getCurrentLocale(), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function renderProgressTaskModal() {
+  const backdrop = document.getElementById('progress-task-modal-backdrop');
+  const modalTitle = document.getElementById('progress-task-modal-title');
+  const titleValue = document.getElementById('progress-task-title-value');
+  const descriptionValue = document.getElementById('progress-task-description-value');
+  const scheduledValue = document.getElementById('progress-task-scheduled-value');
+  const completedValue = document.getElementById('progress-task-completed-value');
+  if (!backdrop || !modalTitle || !titleValue || !descriptionValue || !scheduledValue || !completedValue) return;
+
+  const selectedEvent = planningState.events.find((event) => event.id === progressTaskModalState.eventId) || null;
+  if (!progressTaskModalState.open || !selectedEvent || !isPlanningEventCompleted(selectedEvent)) {
+    backdrop.classList.remove('open');
+    titleValue.textContent = '';
+    descriptionValue.textContent = '';
+    scheduledValue.textContent = '';
+    completedValue.textContent = '';
+    return;
+  }
+
+  backdrop.classList.add('open');
+  modalTitle.textContent = t('taskModalReadTitle');
+  titleValue.textContent = selectedEvent.title || t('untitledTask');
+  descriptionValue.textContent = selectedEvent.description || t('taskModalEmptyDescription');
+  descriptionValue.classList.toggle('task-modal-empty', !selectedEvent.description);
+  scheduledValue.textContent = formatTaskDateLabel(selectedEvent.date, selectedEvent.time);
+  completedValue.textContent = formatCompletionDateLabel(selectedEvent.completedAt);
+}
+
+function openProgressTaskModal(eventId) {
+  const event = planningState.events.find((entry) => entry.id === eventId);
+  if (!event || !isPlanningEventCompleted(event)) return;
+
+  progressTaskModalState.open = true;
+  progressTaskModalState.eventId = event.id;
+  renderProgressTaskModal();
+}
+
 function saveTaskModalChanges() {
   const selectedEvent = planningState.events.find((event) => event.id === taskModalState.eventId);
   const titleInput = document.getElementById('task-title-input');
@@ -2376,19 +2643,69 @@ function saveTaskModalChanges() {
   renderPlanningPanel();
 }
 
+function getNextActiveEventIdForDate(dateKey) {
+  return getActivePlanningEvents()
+    .filter((event) => event.date === dateKey)
+    .sort((left, right) => left.time.localeCompare(right.time))[0]?.id || null;
+}
+
+function markPlanningEventCompleted(eventId) {
+  const existingEvent = planningState.events.find((event) => event.id === eventId);
+  if (!existingEvent || isPlanningEventCompleted(existingEvent)) return;
+
+  existingEvent.completedAt = Date.now();
+  taskModalState.swipedEventId = null;
+
+  if (planningState.selectedEventId === eventId) {
+    planningState.selectedEventId = getNextActiveEventIdForDate(existingEvent.date);
+  }
+
+  if (taskModalState.eventId === eventId) {
+    closeTaskModal();
+  }
+
+  persistPlanningState();
+  renderHomePage();
+  renderProgressPage();
+
+  if (currentPanelSection === 'planning') {
+    renderPlanningPanel();
+  }
+}
+
+function markPlanningEventActive(eventId) {
+  const existingEvent = planningState.events.find((event) => event.id === eventId);
+  if (!existingEvent || !isPlanningEventCompleted(existingEvent)) return;
+
+  existingEvent.completedAt = null;
+  planningState.selectedEventId = existingEvent.id;
+
+  if (progressTaskModalState.eventId === eventId) {
+    closeProgressTaskModal();
+  }
+
+  persistPlanningState();
+  renderHomePage();
+  renderProgressPage();
+
+  if (currentPanelSection === 'planning') {
+    renderPlanningPanel();
+  }
+}
+
 function removePlanningEventById(eventId) {
   const existingEvent = planningState.events.find((event) => event.id === eventId);
   if (!existingEvent) return;
 
   planningState.events = planningState.events.filter((event) => event.id !== eventId);
   if (planningState.selectedEventId === eventId) {
-    const sameDayEvents = planningState.events
-      .filter((event) => event.date === existingEvent.date)
-      .sort((left, right) => left.time.localeCompare(right.time));
-    planningState.selectedEventId = sameDayEvents[0]?.id || null;
+    planningState.selectedEventId = getNextActiveEventIdForDate(existingEvent.date);
   }
   if (taskModalState.eventId === eventId) {
     closeTaskModal();
+  }
+  if (progressTaskModalState.eventId === eventId) {
+    closeProgressTaskModal();
   }
   taskModalState.swipedEventId = null;
   renderPlanningPanel();
@@ -2413,7 +2730,7 @@ function setAgendaEventReveal(eventId, revealRatio) {
 }
 
 function handleAgendaPointerDown(event) {
-  const trigger = event.target.closest('.agenda-event-content');
+  const trigger = event.target.closest('.agenda-event-main');
   if (!trigger) return;
 
   const eventCard = trigger.closest('.agenda-event');
@@ -2475,7 +2792,6 @@ function initializePlanningInteractions() {
   const modalClose = document.getElementById('task-modal-close');
   const modalCancel = document.getElementById('task-modal-cancel');
   const modalSave = document.getElementById('task-modal-save');
-
   if (!dayBtn || dayBtn._initialized) return;
   dayBtn._initialized = true;
 
@@ -2529,6 +2845,13 @@ function initializePlanningInteractions() {
   agenda.addEventListener('pointerup', handleAgendaPointerUp);
   agenda.addEventListener('pointercancel', resetAgendaSwipeState);
   agenda.addEventListener('click', (event) => {
+    const completeButton = event.target.closest('[data-complete-event-id]');
+    if (completeButton) {
+      event.stopPropagation();
+      markPlanningEventCompleted(Number(completeButton.dataset.completeEventId));
+      return;
+    }
+
     const editButton = event.target.closest('[data-edit-event-id]');
     if (editButton) {
       event.stopPropagation();
@@ -2560,6 +2883,56 @@ function initializePlanningInteractions() {
   });
 }
 
+function initializeProgressInteractions() {
+  const progressList = document.getElementById('progress-completed-list');
+  const progressModalBackdrop = document.getElementById('progress-task-modal-backdrop');
+  const progressModalClose = document.getElementById('progress-task-modal-close');
+  const progressModalCancel = document.getElementById('progress-task-modal-cancel');
+
+  if (!progressList || progressList._initialized) return;
+  progressList._initialized = true;
+
+  progressList.addEventListener('click', (event) => {
+    const restoreButton = event.target.closest('[data-restore-event-id]');
+    if (restoreButton) {
+      event.stopPropagation();
+      markPlanningEventActive(Number(restoreButton.dataset.restoreEventId));
+      return;
+    }
+
+    const completedCard = event.target.closest('[data-progress-open-id]');
+    if (!completedCard) return;
+    openProgressTaskModal(Number(completedCard.dataset.progressOpenId));
+  });
+
+  progressModalClose?.addEventListener('click', closeProgressTaskModal);
+  progressModalCancel?.addEventListener('click', closeProgressTaskModal);
+  progressModalBackdrop?.addEventListener('click', (event) => {
+    if (event.target === progressModalBackdrop) {
+      closeProgressTaskModal();
+    }
+  });
+}
+
+function renderProgressPage() {
+  const progressList = document.getElementById('progress-completed-list');
+  if (!progressList) return;
+
+  initializeProgressInteractions();
+
+  const completedEvents = getCompletedPlanningEvents()
+    .sort((left, right) => right.completedAt - left.completedAt);
+
+  if (!completedEvents.length) {
+    progressList.innerHTML = `<div class="agenda-empty progress-empty">${escapeHtml(t('progressEmpty'))}</div>`;
+    renderProgressTaskModal();
+    return;
+  }
+
+  progressList.innerHTML = completedEvents.map((event) => (`<div class="progress-event-card"><button type="button" class="progress-event-open" data-progress-open-id="${event.id}"><div class="progress-event-main"><div class="agenda-event-time">${escapeHtml(formatTaskDateLabel(event.date, event.time))}</div><div class="agenda-name">${escapeHtml(event.title || t('untitledTask'))}</div></div></button><button type="button" class="agenda-event-check checked" data-restore-event-id="${event.id}" aria-label="${escapeHtml(t('taskUncompleteAria'))}"></button></div>`)).join('');
+  renderProgressTaskModal();
+}
+
 function formatLongDate(date) {
   return date.toLocaleDateString(getCurrentLocale(), {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 }
@@ -2577,6 +2950,7 @@ function renderPlanningPanel() {
   persistPlanningState();
   initializePlanningInteractions();
   renderHomePage();
+  renderProgressPage();
 
   const dayBtn = document.getElementById('view-day-btn-panel');
   const monthBtn = document.getElementById('view-month-btn-panel');
@@ -2595,7 +2969,7 @@ function renderPlanningPanel() {
     label.textContent = formatLongDate(planningState.currentDate);
     
     const key = formatDateKey(planningState.currentDate);
-    const events = planningState.events.filter(e => e.date === key).sort((a, b) => a.time.localeCompare(b.time));
+    const events = getActivePlanningEvents().filter(e => e.date === key).sort((a, b) => a.time.localeCompare(b.time));
     if (!events.some(event => event.id === planningState.selectedEventId)) {
       planningState.selectedEventId = events[0]?.id || null;
     }
@@ -2634,7 +3008,7 @@ function renderPlanningPanel() {
     const grid = document.getElementById('month-grid-panel');
     grid.innerHTML = cells.map(cell => {
       const key = formatDateKey(cell.date);
-      const hasEvent = planningState.events.some(e => e.date === key);
+      const hasEvent = getActivePlanningEvents().some(e => e.date === key);
       const todayClass = sameDay(cell.date, today) ? 'today' : '';
       const outsideClass = cell.outside ? 'outside' : '';
       return `<button type="button" class="month-day ${outsideClass} ${todayClass}" data-date-key="${key}"><div class="month-day-number">${cell.date.getDate()}</div>${hasEvent ? '<div class="month-day-dot"></div>' : ''}</button>`;
