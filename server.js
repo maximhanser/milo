@@ -16,6 +16,10 @@ app.use(express.json());
 app.use(express.static(__dirname));
 const sessionMemoryStore = new Map();
 
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, service: "milo-backend" });
+});
+
 function getAIProviderLabel() {
   return "OpenAI";
 }

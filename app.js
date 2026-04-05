@@ -2135,6 +2135,14 @@ function getEducationAgentRequestPayload(message) {
 }
 
 function getApiUrl(pathname) {
+  const configuredApiBaseUrl = typeof window.MILO_API_BASE_URL === 'string'
+    ? window.MILO_API_BASE_URL.trim().replace(/\/$/, '')
+    : '';
+
+  if (configuredApiBaseUrl) {
+    return `${configuredApiBaseUrl}${pathname}`;
+  }
+
   if (window.location?.origin && /^https?:/i.test(window.location.origin)) {
     return `${window.location.origin}${pathname}`;
   }
