@@ -82,6 +82,9 @@
     const profilePhotoButton = document.getElementById('profile-photo-button');
     const profilePhotoRemoveButton = document.getElementById('profile-photo-remove');
     const profilePhotoInput = document.getElementById('profile-photo-input');
+    const profilePhotoPreview = document.getElementById('profile-photo-preview');
+    const profilePhotoLightbox = document.getElementById('profile-photo-lightbox');
+    const profilePhotoLightboxImage = document.getElementById('profile-photo-lightbox-image');
     const profileSaveButton = document.getElementById('profile-save-btn');
     const profileStorageKey = 'milo.profile';
     const chatSessionStorageKey = 'milo.chatSessionId';
@@ -644,6 +647,7 @@ function applyTranslations() {
   });
   const avatarPreview = document.getElementById('profile-photo-preview');
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
+  if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
   setPanelState('idle');
   renderChatHistory();
   renderEducationChatHistory();
@@ -748,6 +752,18 @@ if (profilePhotoButton && profilePhotoInput) {
 
 if (profilePhotoRemoveButton) {
   profilePhotoRemoveButton.addEventListener('click', removeProfilePhoto);
+}
+
+if (profilePhotoPreview) {
+  profilePhotoPreview.addEventListener('click', openProfilePhotoLightbox);
+}
+
+if (profilePhotoLightbox) {
+  profilePhotoLightbox.addEventListener('click', (event) => {
+    if (event.target === profilePhotoLightbox) {
+      closeProfilePhotoLightbox();
+    }
+  });
 }
 
 if (profileSaveButton) {
@@ -903,6 +919,21 @@ function updateAvatarImages(photoData) {
   avatarImages.forEach(image => {
     image.src = src;
   });
+  if (profilePhotoLightboxImage) {
+    profilePhotoLightboxImage.src = src;
+  }
+}
+
+function openProfilePhotoLightbox() {
+  if (!profilePhotoLightbox || !profilePhotoLightboxImage) return;
+
+  profilePhotoLightboxImage.src = currentProfilePhotoData || getDefaultAvatarData();
+  profilePhotoLightbox.classList.add('open');
+}
+
+function closeProfilePhotoLightbox() {
+  if (!profilePhotoLightbox) return;
+  profilePhotoLightbox.classList.remove('open');
 }
 
 function getDefaultProfile() {

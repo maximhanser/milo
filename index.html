@@ -1434,6 +1434,7 @@
     flex-shrink: 0;
     border: 0.5px solid rgba(255,255,255,0.1);
     background: var(--bg3);
+    cursor: zoom-in;
   }
 
   .profile-photo-meta {
@@ -1532,6 +1533,33 @@
 
   .profile-scroll-spacer {
     height: 16px;
+  }
+
+  .profile-photo-lightbox {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(8, 8, 12, 0.84);
+    backdrop-filter: blur(10px);
+    z-index: 20;
+  }
+
+  .profile-photo-lightbox.open {
+    display: flex;
+  }
+
+  .profile-photo-lightbox-image {
+    width: min(100%, 320px);
+    max-width: 100%;
+    max-height: min(70vh, 420px);
+    object-fit: cover;
+    border-radius: 28px;
+    border: 0.5px solid rgba(255,255,255,0.12);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.36);
+    background: var(--bg3);
   }
 
   .progress-page-content {
@@ -1805,6 +1833,10 @@
 
   <div class="profile-actions">
     <button class="profile-save-btn" id="profile-save-btn" type="button">Enregistrer</button>
+  </div>
+
+  <div class="profile-photo-lightbox" id="profile-photo-lightbox">
+    <img class="profile-photo-lightbox-image" id="profile-photo-lightbox-image" alt="Aperçu photo de profil" />
   </div>
   </div>
 
