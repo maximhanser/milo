@@ -56,6 +56,7 @@
     const educationSheetLengthSelect = document.getElementById('education-sheet-length');
     const educationSheetLengthWrap = document.getElementById('education-sheet-length-wrap');
     const educationGoBtn = document.getElementById('education-go-btn');
+    const educationDownloadLatestBtn = document.getElementById('education-download-latest-btn');
     const educationActionButtons = document.querySelectorAll('[data-education-action]');
     const clearDocBtn = document.getElementById('clear-doc-btn');
     const panelDragState = {
@@ -189,7 +190,7 @@
         educationPasteLabel: 'Texte de travail',
         educationSourcePlaceholder: 'Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz.',
         educationDocumentsHelp: 'Importe un document texte ou colle un passage. Le chat IA d\'Éducation utilisera ce contenu comme base de travail.',
-        educationActionExplain: 'Comprendre',
+        educationActionExplain: 'Aide',
         educationActionReformulate: 'Reformuler',
         educationActionSheet: 'Fiche',
         educationActionQuiz: 'Quiz',
@@ -200,6 +201,7 @@
         educationSheetMedium: 'Moyen',
         educationSheetLong: 'Long',
         educationGo: 'Go',
+        educationDownloadLatest: 'Télécharger la réponse PDF',
         clearText: 'Effacer le texte',
         educationNoSource: 'Ajoute un texte ou sélectionne un document avant de lancer une consigne d\'étude.',
         unsupportedDocument: 'Importe un document texte (.txt, .md, .csv ou .json).',
@@ -346,6 +348,7 @@
         educationSheetMedium: 'Medium',
         educationSheetLong: 'Long',
         educationGo: 'Go',
+        educationDownloadLatest: 'Download response PDF',
         clearText: 'Clear text',
         educationNoSource: 'Add text or select a document before asking for a study task.',
         unsupportedDocument: 'Import a text document (.txt, .md, .csv or .json).',
@@ -492,6 +495,7 @@
         educationSheetMedium: 'Medio',
         educationSheetLong: 'Largo',
         educationGo: 'Go',
+        educationDownloadLatest: 'Descargar la respuesta en PDF',
         clearText: 'Borrar texto',
         educationNoSource: 'Agrega un texto o selecciona un documento antes de pedir una tarea de estudio.',
         unsupportedDocument: 'Importa un documento de texto (.txt, .md, .csv o .json).',
@@ -648,6 +652,7 @@ function applyTranslations() {
   setText('education-sheet-option-medium', 'educationSheetMedium');
   setText('education-sheet-option-long', 'educationSheetLong');
   setText('education-go-btn', 'educationGo');
+  setText('education-download-latest-btn', 'educationDownloadLatest');
   if (educationFilesToggle) {
     educationFilesToggle.setAttribute('aria-label', t('educationFilesToggleLabel'));
     educationFilesToggle.setAttribute('title', t('educationFilesToggleLabel'));
@@ -874,6 +879,10 @@ educationActionButtons.forEach((button) => {
 
 if (educationGoBtn) {
   educationGoBtn.addEventListener('click', runEducationTask);
+}
+
+if (educationDownloadLatestBtn) {
+  educationDownloadLatestBtn.addEventListener('click', downloadLatestEducationResponsePdf);
 }
 
 if (clearDocBtn) {
@@ -1535,10 +1544,32 @@ function downloadEducationMessagePdf(messageIndex) {
   doc.save(`${slugifyEducationFileName(title)}.pdf`);
 }
 
+function getLatestEducationMiloMessageIndex() {
+  for (let index = educationChatHistory.length - 1; index >= 0; index -= 1) {
+    if (educationChatHistory[index]?.role === 'milo') {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function updateEducationDownloadButtonState() {
+  if (!educationDownloadLatestBtn) return;
+  educationDownloadLatestBtn.disabled = getLatestEducationMiloMessageIndex() === -1;
+}
+
+function downloadLatestEducationResponsePdf() {
+  const latestMessageIndex = getLatestEducationMiloMessageIndex();
+  if (latestMessageIndex === -1) return;
+  downloadEducationMessagePdf(latestMessageIndex);
+}
+
 function renderEducationChatHistory() {
   if (!educationChatHistoryEl) return;
   if (educationChatHistory.length === 0) {
     educationChatHistoryEl.innerHTML = `<div class="chat-empty">${t('educationChatEmpty')}</div>`;
+    updateEducationDownloadButtonState();
     return;
   }
 
@@ -1562,6 +1593,7 @@ function renderEducationChatHistory() {
     return `<div class="education-message-card user"><div class="chat-bubble user">${escapeHtml(msg.text)}</div></div>`;
   }).join('');
   educationChatHistoryEl.scrollTop = educationChatHistoryEl.scrollHeight;
+  updateEducationDownloadButtonState();
 }
 
 function addMessageToEducationHistory(role, text) {

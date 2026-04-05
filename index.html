@@ -1253,7 +1253,8 @@
   /* Education page */
   .education-content {
     display: block;
-    padding: 0 20px 120px;
+    padding: 0 20px 220px;
+    scroll-padding-bottom: 160px;
   }
 
   .education-workspace {
@@ -1352,6 +1353,30 @@
 
   .education-go-btn {
     margin-top: 4px;
+    margin-bottom: 8px;
+  }
+
+  .education-secondary-btn {
+    width: 100%;
+    border: 0.5px solid rgba(124,109,240,0.22);
+    border-radius: 16px;
+    background: rgba(124,109,240,0.08);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+  }
+
+  .education-secondary-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .education-secondary-btn:active:not(:disabled) {
+    background: rgba(124,109,240,0.16);
   }
 
   .documents-help {
@@ -2012,6 +2037,7 @@
       </div>
 
       <button class="profile-save-btn education-go-btn" id="education-go-btn" type="button">Go</button>
+      <button class="education-secondary-btn" id="education-download-latest-btn" type="button" disabled>Télécharger la réponse PDF</button>
     </div>
   </div>
   </div>
