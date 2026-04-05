@@ -1263,26 +1263,38 @@
 
   /* Light theme overrides */
   .light-theme {
-    --bg: #ffffff;
-    --bg2: #f8ecff;
-    --bg3: #f0e1ff;
-    --border: rgba(224,177,252,0.35);
+    --bg: #FAFCFC;
+    --bg2: #EEF6FF;
+    --bg3: #E3F0FF;
+    --border: rgba(173,224,255,0.34);
     --text: #1a1a1a;
     --text2: rgba(26,26,26,0.7);
     --text3: rgba(26,26,26,0.35);
-    --accent: #e0b1fc;
-    --accent2: #c08ce6;
+    --accent: #738FFF;
+    --accent2: rgba(173,224,255,0.42);
   }
 
   /* Education page */
+  .education-page {
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   .education-content {
+    flex: 1;
+    min-height: 0;
     display: block;
-    padding: 0 20px 320px;
-    scroll-padding-bottom: 260px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 20px 180px;
+    scroll-padding-bottom: 140px;
   }
 
   .education-workspace {
-    min-height: calc(100% + 260px);
+    min-height: calc(100% + 120px);
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1405,7 +1417,7 @@
   }
 
   .education-scroll-spacer {
-    height: 260px;
+    height: 96px;
     flex-shrink: 0;
   }
 
@@ -2001,7 +2013,7 @@
   </div>
 
   <!-- PAGE: Education -->
-  <div id="education-page" style="display: none;">
+  <div id="education-page" class="education-page" style="display: none;">
   <div class="status-bar">
     <div class="status-left">
       <button class="avatar-trigger" type="button" data-open-avatar-page>

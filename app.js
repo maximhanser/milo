@@ -968,7 +968,7 @@ function showEducation() {
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 2));
   document.getElementById('home-page').style.display = 'none';
   document.getElementById('avatar-dev-page').style.display = 'none';
-  document.getElementById('education-page').style.display = 'block';
+  document.getElementById('education-page').style.display = 'flex';
   document.getElementById('personal-info-page').style.display = 'none';
   if (miloBtnWrap) miloBtnWrap.style.display = 'block';
   updateFloatingPrimaryButton();
