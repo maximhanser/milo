@@ -36,6 +36,7 @@
     const planningPanel = document.getElementById('panel-planning');
     const miloBtnWrap = document.querySelector('.milo-btn-wrap');
     const miloBtn = document.getElementById('milo-btn');
+    const miloBtnLabel = document.getElementById('milo-btn-label');
     const textInput = document.getElementById('text-input');
     const sendBtn = document.getElementById('send-btn');
     const chatHistoryEl = document.getElementById('chat-history');
@@ -108,6 +109,7 @@
     let selectedEducationDocumentId = null;
     let selectedEducationAction = 'explain';
     let selectedEducationSheetLength = 'medium';
+    let lastEducationTaskSignature = '';
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
 
@@ -704,6 +706,7 @@ function applyTranslations() {
   const avatarPreview = document.getElementById('profile-photo-preview');
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
+  updateFloatingPrimaryButton();
   renderEducationComposerState();
   setPanelState('idle');
   renderChatHistory();
@@ -956,6 +959,7 @@ function showHome() {
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'none';
   if (miloBtnWrap) miloBtnWrap.style.display = 'block';
+  updateFloatingPrimaryButton();
   renderHomePage();
 }
 
@@ -967,6 +971,7 @@ function showEducation() {
   document.getElementById('education-page').style.display = 'block';
   document.getElementById('personal-info-page').style.display = 'none';
   if (miloBtnWrap) miloBtnWrap.style.display = 'block';
+  updateFloatingPrimaryButton();
 }
 
 function showPersonalInfo() {
@@ -978,6 +983,7 @@ function showPersonalInfo() {
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'flex';
   if (miloBtnWrap) miloBtnWrap.style.display = 'none';
+  updateFloatingPrimaryButton();
 }
 
 function showAvatarDevPage() {
@@ -989,7 +995,24 @@ function showAvatarDevPage() {
   document.getElementById('personal-info-page').style.display = 'none';
   document.getElementById('avatar-dev-page').style.display = 'flex';
   if (miloBtnWrap) miloBtnWrap.style.display = 'none';
+  updateFloatingPrimaryButton();
   renderProgressPage();
+}
+
+function isEducationPageVisible() {
+  const educationPage = document.getElementById('education-page');
+  return Boolean(educationPage && educationPage.style.display !== 'none');
+}
+
+function updateFloatingPrimaryButton() {
+  if (!miloBtn) return;
+
+  const educationVisible = isEducationPageVisible();
+  miloBtn.classList.toggle('education-go', educationVisible);
+
+  if (miloBtnLabel) {
+    miloBtnLabel.textContent = t('educationGo');
+  }
 }
 
 function getDefaultAvatarData() {
@@ -1846,6 +1869,22 @@ function getEducationTaskPrompt() {
   return `${basePrompt} Indications supplémentaires : ${extraInstructions}`;
 }
 
+function getEducationTaskSignature() {
+  const studyContext = getEducationStudyContext();
+  return JSON.stringify({
+    action: selectedEducationAction,
+    sheetLength: selectedEducationAction === 'sheet' ? selectedEducationSheetLength : '',
+    instructions: educationInstructionsInput?.value.trim() || '',
+    pastedText: studyContext.pastedText,
+    selectedDocumentId: studyContext.selectedDocumentId || '',
+    documents: studyContext.documents.map((document) => ({
+      id: document.id,
+      name: document.name,
+      content: document.content
+    }))
+  });
+}
+
 function runEducationTask() {
   if (isEducationAgentRequestPending) {
     showToast(t('educationChatThinking'));
@@ -1861,6 +1900,14 @@ function runEducationTask() {
   const prompt = getEducationTaskPrompt();
   if (!prompt) return;
 
+  const taskSignature = getEducationTaskSignature();
+  if (taskSignature === lastEducationTaskSignature && getLatestEducationMiloMessageIndex() !== -1) {
+    openPanelSection('education-chat');
+    renderEducationChatHistory();
+    return;
+  }
+
+  lastEducationTaskSignature = taskSignature;
   openPanelSection('education-chat');
   addMessageToEducationHistory('user', prompt);
   sendCommand(prompt, 'education-text');
@@ -1896,6 +1943,11 @@ textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendFromInpu
 if (educationSendBtn) educationSendBtn.addEventListener('click', sendEducationFromInput);
 if (educationTextInput) educationTextInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendEducationFromInput(); });
 miloBtn.addEventListener('click', function() {
+  if (isEducationPageVisible()) {
+    runEducationTask();
+    return;
+  }
+
   if (isAgentRequestPending) {
     showToast(t('chatThinking'));
     return;
