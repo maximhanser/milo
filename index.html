@@ -711,6 +711,10 @@
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   }
 
+  #planning-day-view-panel {
+    position: relative;
+  }
+
   .day-agenda-scroll {
     position: relative;
     height: 100%;
@@ -765,21 +769,90 @@
     position: absolute;
     left: 10px;
     right: 10px;
-    min-height: 54px;
+    height: 56px;
+    overflow: hidden;
+    border-radius: 14px;
+    pointer-events: auto;
+    --swipe-translate: 0%;
+    --actions-translate: 100%;
+    --actions-opacity: 0;
+  }
+
+  .agenda-event-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .agenda-event-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-left: 10px;
+    transform: translateX(var(--actions-translate));
+    opacity: var(--actions-opacity);
+    transition: transform 0.2s ease, opacity 0.16s ease;
+    pointer-events: none;
+  }
+
+  .agenda-event.swiped .agenda-event-actions {
+    pointer-events: auto;
+  }
+
+  .agenda-event-action {
+    flex: 1;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: filter 0.18s ease;
+  }
+
+  .agenda-event-action:active {
+    filter: brightness(1.08);
+  }
+
+  .agenda-event-action.edit {
+    background: rgba(62,207,170,0.18);
+    color: #79e0c4;
+  }
+
+  .agenda-event-action.delete {
+    background: rgba(240,96,96,0.92);
+    color: #fff6f6;
+  }
+
+  .agenda-event-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
     padding: 10px 12px;
     border-radius: 14px;
     background: linear-gradient(180deg, rgba(124,109,240,0.28), rgba(124,109,240,0.18));
     border: 0.5px solid rgba(124,109,240,0.38);
     box-shadow: 0 10px 24px rgba(0,0,0,0.18);
-    pointer-events: auto;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 4px;
+    transform: translateX(calc(-1 * var(--swipe-translate)));
+    transition: transform 0.22s ease;
+    text-align: left;
   }
 
-  .agenda-event.active {
+  .agenda-event.active .agenda-event-content {
     border-color: rgba(62,207,170,0.8);
     box-shadow: 0 0 0 1px rgba(62,207,170,0.28), 0 12px 28px rgba(0,0,0,0.22);
   }
@@ -814,18 +887,59 @@
     border: 0.5px solid rgba(255,255,255,0.04);
   }
 
-  .task-editor {
-    margin-top: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .task-editor.hidden {
+  .task-modal-backdrop {
+    position: absolute;
+    inset: 0;
     display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(9, 9, 14, 0.44);
+    backdrop-filter: blur(8px);
+    z-index: 6;
   }
 
-  .task-editor-field {
+  .task-modal-backdrop.open {
+    display: flex;
+  }
+
+  .task-modal {
+    width: min(100%, 320px);
+    max-height: min(78vh, 460px);
+    overflow-y: auto;
+    border-radius: 22px;
+    border: 0.5px solid rgba(255,255,255,0.09);
+    background: linear-gradient(180deg, rgba(30,30,40,0.98), rgba(22,22,29,0.96));
+    box-shadow: 0 26px 60px rgba(0,0,0,0.34);
+    padding: 18px;
+  }
+
+  .task-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .task-modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .task-modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    color: var(--text2);
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .task-modal-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -835,15 +949,16 @@
     padding: 12px 14px;
   }
 
-  .task-editor-label {
+  .task-modal-label {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text3);
   }
 
-  .task-editor-input,
-  .task-editor-textarea {
+  .task-modal-input,
+  .task-modal-textarea,
+  .task-modal-value {
     width: 100%;
     background: transparent;
     border: none;
@@ -854,19 +969,50 @@
     resize: none;
   }
 
-  .task-editor-input {
+  .task-modal-input {
     font-weight: 500;
   }
 
-  .task-editor-textarea {
+  .task-modal-textarea {
     min-height: 104px;
     line-height: 1.5;
+    resize: none;
   }
 
-  .task-editor-placeholder {
+  .task-modal-value {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .task-modal-empty {
     color: var(--text3);
-    font-size: 13px;
-    padding: 14px 4px 0;
+  }
+
+  .task-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .task-modal-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+  }
+
+  .task-modal-btn.secondary {
+    background: rgba(255,255,255,0.06);
+    color: var(--text2);
+  }
+
+  .task-modal-btn.primary {
+    background: var(--accent);
+    color: white;
   }
 
   /* Month grid */
@@ -1704,17 +1850,28 @@
       </div>
       <div id="planning-day-view-panel">
         <div class="day-agenda" id="day-agenda-panel"></div>
-        <div class="task-editor hidden" id="task-editor-panel">
-          <div class="task-editor-field">
-            <div class="task-editor-label" id="task-title-label">Titre</div>
-            <input class="task-editor-input" id="task-title-input" placeholder="Titre de la tâche" />
-          </div>
-          <div class="task-editor-field">
-            <div class="task-editor-label" id="task-description-label">Description</div>
-            <textarea class="task-editor-textarea" id="task-description-input" placeholder="Ajouter une description"></textarea>
+        <div class="task-modal-backdrop" id="task-modal-backdrop">
+          <div class="task-modal" id="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+            <div class="task-modal-header">
+              <div class="task-modal-title" id="task-modal-title">Tâche</div>
+              <button type="button" class="task-modal-close" id="task-modal-close">×</button>
+            </div>
+            <div class="task-modal-field">
+              <div class="task-modal-label" id="task-title-label">Titre</div>
+              <div class="task-modal-value" id="task-title-value"></div>
+              <input class="task-modal-input" id="task-title-input" placeholder="Titre de la tâche" style="display:none;" />
+            </div>
+            <div class="task-modal-field" style="margin-top: 10px;">
+              <div class="task-modal-label" id="task-description-label">Description</div>
+              <div class="task-modal-value task-modal-empty" id="task-description-value"></div>
+              <textarea class="task-modal-textarea" id="task-description-input" placeholder="Ajouter une description" style="display:none;"></textarea>
+            </div>
+            <div class="task-modal-actions" id="task-modal-actions">
+              <button type="button" class="task-modal-btn secondary" id="task-modal-cancel">Fermer</button>
+              <button type="button" class="task-modal-btn primary" id="task-modal-save" style="display:none;">Enregistrer</button>
+            </div>
           </div>
         </div>
-        <div class="task-editor-placeholder" id="task-editor-placeholder">Touchez une tâche pour modifier son titre et sa description.</div>
       </div>
       <div id="planning-month-view-panel" style="display: none;">
         <div class="month-weekdays">

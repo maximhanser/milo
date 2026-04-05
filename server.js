@@ -70,6 +70,7 @@ function getAssistantSystemPrompt(agentType = "general") {
     "Réponds dans la langue de l'utilisateur.",
     "Quand la demande concerne le planning, consulte le planning puis utilise l'outil d'ajout si nécessaire au lieu de juste décrire quoi faire.",
     "Quand l'utilisateur demande de renommer, modifier ou déplacer un rappel existant, mets à jour l'événement existant au lieu d'en créer un nouveau.",
+    "Quand l'utilisateur demande de supprimer, annuler ou retirer un rappel existant, utilise l'outil de suppression du planning.",
     "Quand une information durable sur l'utilisateur apparaît, tu peux l'enregistrer en mémoire avec l'outil adapté.",
     "Quand une question nécessite des informations récentes ou externes, utilise la recherche web.",
     "Sois concret, exact et utile."
@@ -966,6 +967,23 @@ function getAgentTools(agentType = "general") {
     {
       type: "function",
       function: {
+        name: "delete_planning_event",
+        description: "Supprime un événement existant du planning de l'utilisateur.",
+        parameters: {
+          type: "object",
+          properties: {
+            eventId: { type: "number", description: "Identifiant de l'événement à supprimer si connu" },
+            currentTitle: { type: "string", description: "Titre actuel de l'événement à retrouver" },
+            currentDate: { type: "string", description: "Date actuelle au format YYYY-MM-DD pour aider à cibler l'événement" },
+            currentTime: { type: "string", description: "Heure actuelle au format HH:mm pour aider à cibler l'événement" }
+          },
+          additionalProperties: false
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "save_memory_note",
         description: "Enregistre une préférence ou un fait durable utile sur l'utilisateur.",
         parameters: {
@@ -1032,7 +1050,7 @@ async function executeAgentTool(toolName, args, runtime) {
         time,
         title,
         description,
-        meta: "Ajouté par Milo"
+        meta: ""
       };
 
       runtime.planning.events.push(event);
@@ -1097,6 +1115,37 @@ async function executeAgentTool(toolName, args, runtime) {
       });
 
       return { ok: true, event: updatedEvent };
+    }
+    case "delete_planning_event": {
+      const eventId = typeof args.eventId === "number" ? args.eventId : null;
+      const currentTitle = typeof args.currentTitle === "string" ? args.currentTitle.trim() : "";
+      const currentDate = typeof args.currentDate === "string" ? args.currentDate.trim() : "";
+      const currentTime = typeof args.currentTime === "string" ? args.currentTime.trim() : "";
+
+      const existingEvent = findPlanningEvent(runtime.planning, {
+        eventId,
+        title: currentTitle,
+        date: currentDate,
+        time: currentTime
+      });
+
+      if (!existingEvent) {
+        return { ok: false, error: "Planning event not found" };
+      }
+
+      runtime.planning.events = runtime.planning.events.filter(event => event.id !== existingEvent.id);
+      if (runtime.planning.selectedEventId === existingEvent.id) {
+        runtime.planning.selectedEventId = null;
+      }
+
+      runtime.actions.push({
+        type: "delete_planning_event",
+        eventId: existingEvent.id,
+        event: existingEvent,
+        openPlanning: true
+      });
+
+      return { ok: true, event: existingEvent };
     }
     case "save_memory_note":
       return rememberNote(runtime.sessionId, args.note);
