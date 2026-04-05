@@ -16,65 +16,32 @@ app.use(express.json());
 app.use(express.static(__dirname));
 const sessionMemoryStore = new Map();
 
-function getAIProvider() {
-  const explicitProvider = (process.env.AI_PROVIDER || process.env.PROVIDER || "").toLowerCase().trim();
-  if (explicitProvider === "gemini") return "gemini";
-  if (explicitProvider === "xai") return "xai";
-  if (explicitProvider === "openai") return "openai";
-  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return "gemini";
-  if (process.env.XAI_API_KEY) return "xai";
-  return "openai";
-}
-
 function getAIProviderLabel() {
-  const provider = getAIProvider();
-  if (provider === "gemini") return "Gemini";
-  if (provider === "xai") return "Grok";
   return "OpenAI";
 }
 
 function getAIKeyEnvName() {
-  const provider = getAIProvider();
-  if (provider === "gemini") {
-    return "GEMINI_API_KEY ou GOOGLE_API_KEY";
-  }
-
-  return provider === "xai" ? "XAI_API_KEY" : "OPENAI_API_KEY";
+  return "OPENAI_API_KEY";
 }
 
 function getAIKey() {
-  if (getAIProvider() === "gemini") {
-    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-  }
-
-  const envName = getAIKeyEnvName();
-  return process.env[envName] || "";
+  return process.env.OPENAI_API_KEY || "";
 }
 
 function getAIModel() {
-  if (getAIProvider() === "gemini") {
-    return process.env.GEMINI_MODEL || "gemini-2.5-flash";
-  }
-
-  if (getAIProvider() === "xai") {
-    return process.env.XAI_MODEL || "grok-4-0709";
-  }
-
-  return process.env.OPENAI_MODEL || "gpt-5.4";
+  return process.env.OPENAI_MODEL || "gpt-4.1-mini";
 }
 
 function createAIClient() {
-  const provider = getAIProvider();
   const options = {
     apiKey: getAIKey()
   };
+  const baseURL = typeof process.env.OPENAI_BASE_URL === "string"
+    ? process.env.OPENAI_BASE_URL.trim()
+    : "";
 
-  if (provider === "gemini") {
-    options.baseURL = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai/";
-  }
-
-  if (provider === "xai") {
-    options.baseURL = process.env.XAI_BASE_URL || "https://api.x.ai/v1";
+  if (baseURL) {
+    options.baseURL = baseURL;
   }
 
   return new OpenAI(options);
@@ -192,6 +159,7 @@ function getSessionMemory(sessionId) {
   if (!sessionMemoryStore.has(sessionId)) {
     sessionMemoryStore.set(sessionId, {
       notes: [],
+      learningPlanDraft: null,
       createdAt: Date.now(),
       updatedAt: Date.now()
     });
@@ -225,6 +193,23 @@ function getMemorySnapshot(sessionId) {
     notes: memory.notes,
     updatedAt: memory.updatedAt
   };
+}
+
+function getLearningPlanDraft(sessionId) {
+  return getSessionMemory(sessionId).learningPlanDraft || null;
+}
+
+function saveLearningPlanDraft(sessionId, draft) {
+  const memory = getSessionMemory(sessionId);
+  memory.learningPlanDraft = draft;
+  memory.updatedAt = Date.now();
+  return memory.learningPlanDraft;
+}
+
+function clearLearningPlanDraft(sessionId) {
+  const memory = getSessionMemory(sessionId);
+  memory.learningPlanDraft = null;
+  memory.updatedAt = Date.now();
 }
 
 function buildContextMessage({ language, profile, planning, sessionId }) {
@@ -321,6 +306,508 @@ function isValidTimeKey(time) {
   return /^\d{2}:\d{2}$/.test(time || "");
 }
 
+function normalizeText(value = "") {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+function formatDateKeyFromDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey) {
+  if (!isValidDateKey(dateKey)) return null;
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function normalizeLearningTopic(topic = "") {
+  return topic
+    .trim()
+    .replace(/^[\s'’"-]+|[\s'’"-]+$/g, "")
+    .replace(/^(?:le|la|les|l'|l’|du|de la|des|the)\s+/i, "")
+    .replace(/[?.!,;:]+$/g, "");
+}
+
+function formatLearningTopicTitle(topic = "") {
+  const normalizedTopic = normalizeLearningTopic(topic);
+  if (!normalizedTopic) return "Apprentissage";
+  return normalizedTopic.charAt(0).toUpperCase() + normalizedTopic.slice(1);
+}
+
+function detectLearningGoalIntent(message) {
+  const rawMessage = typeof message === "string" ? message.trim() : "";
+  if (!rawMessage) return null;
+
+  const patterns = [
+    /(?:je veux|j'aimerais|j aimerais|aide-moi a|aide moi a|je souhaite)\s+(?:apprendre|etudier|reviser)\s+(.+)/i,
+    /(?:i want to|help me)\s+learn\s+(.+)/i,
+    /learn\s+(.+)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(normalizeText(rawMessage));
+    if (!match?.[1]) continue;
+
+    const topic = match[1]
+      .split(/\b(?:pendant|durant|sur|avec|a raison de|for|over|with)\b/i)[0]
+      .trim();
+
+    if (topic) {
+      return {
+        rawTopic: topic,
+        topic: normalizeLearningTopic(topic)
+      };
+    }
+  }
+
+  return null;
+}
+
+function parseSessionsPerWeek(message) {
+  const normalizedMessage = normalizeText(message);
+  const match = /(?:(\d+)\s*(?:seances?|sessions?)\s*(?:par|\/)?\s*(?:semaine|week)|(?:par|\/)?\s*(?:semaine|week)\s*:?\s*(\d+)|(?:\b|^)(\d+)\s*x\s*(?:par|\/)?\s*(?:semaine|week))/i.exec(normalizedMessage);
+  const value = Number(match?.[1] || match?.[2] || match?.[3] || 0);
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function parseSessionDurationMinutes(message) {
+  const normalizedMessage = normalizeText(message);
+  const patterns = [
+    /(?:seances?|sessions?)\s*de\s*(\d+(?:[.,]\d+)?)\s*(h|heure|heures|hour|hours|min|mins|minute|minutes)/i,
+    /(\d+(?:[.,]\d+)?)\s*(h|heure|heures|hour|hours|min|mins|minute|minutes)\s*(?:par|\/)?\s*(?:seance|session)/i,
+    /(?:par|\/)?\s*(?:seance|session)\s*:?\s*(\d+(?:[.,]\d+)?)\s*(h|heure|heures|hour|hours|min|mins|minute|minutes)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(normalizedMessage);
+    if (!match) continue;
+
+    const value = Number(match[1].replace(",", "."));
+    const unit = match[2];
+    if (!Number.isFinite(value) || value <= 0) continue;
+
+    if (/^h|heure|hour/.test(unit)) {
+      return Math.round(value * 60);
+    }
+
+    return Math.round(value);
+  }
+
+  return null;
+}
+
+function parseLearningDuration(message) {
+  const normalizedMessage = normalizeText(message);
+  const keywordMatch = /(?:pendant|durant|sur|for|over)\s*(\d+(?:[.,]\d+)?)\s*(jour|jours|day|days|semaine|semaines|week|weeks|mois|month|months|an|ans|annee|annees|year|years)/i.exec(normalizedMessage);
+  const genericMatch = /(\d+(?:[.,]\d+)?)\s*(jour|jours|day|days|semaine|semaines|week|weeks|mois|month|months|an|ans|annee|annees|year|years)/i.exec(normalizedMessage);
+  const match = keywordMatch || genericMatch;
+
+  if (!match) return null;
+
+  const value = Number(match[1].replace(",", "."));
+  const unit = match[2];
+  if (!Number.isFinite(value) || value <= 0) return null;
+
+  if (/jour|day/.test(unit)) {
+    return {
+      label: `${value} ${value > 1 ? "jours" : "jour"}`,
+      totalDays: Math.ceil(value),
+      totalWeeks: Math.max(1, Math.ceil(value / 7))
+    };
+  }
+
+  if (/semaine|week/.test(unit)) {
+    return {
+      label: `${value} ${value > 1 ? "semaines" : "semaine"}`,
+      totalDays: Math.ceil(value * 7),
+      totalWeeks: Math.max(1, Math.ceil(value))
+    };
+  }
+
+  if (/mois|month/.test(unit)) {
+    return {
+      label: `${value} ${value > 1 ? "mois" : "mois"}`,
+      totalDays: Math.ceil(value * 30),
+      totalWeeks: Math.max(1, Math.ceil((value * 30) / 7))
+    };
+  }
+
+  return {
+    label: `${value} ${value > 1 ? "ans" : "an"}`,
+    totalDays: Math.ceil(value * 365),
+    totalWeeks: Math.max(1, Math.ceil(value * 52))
+  };
+}
+
+function parsePreferredTime(message) {
+  const rawMessage = typeof message === "string" ? message : "";
+  const patterns = [
+    /(\d{1,2}):(\d{2})/,
+    /(\d{1,2})[hH](\d{2})?\b/,
+    /(?:a|à|vers|around)\s*(\d{1,2})\s*heures?\b/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(rawMessage);
+    if (!match) continue;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2] || "0");
+    if (hours > 23 || minutes > 59) continue;
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  return null;
+}
+
+function parsePreferredDays(message) {
+  const normalizedMessage = normalizeText(message);
+  if (!normalizedMessage) return [];
+
+  if (normalizedMessage.includes("tous les jours") || normalizedMessage.includes("every day")) {
+    return [1, 2, 3, 4, 5, 6, 0];
+  }
+
+  if (normalizedMessage.includes("en semaine") || normalizedMessage.includes("weekdays")) {
+    return [1, 2, 3, 4, 5];
+  }
+
+  if (normalizedMessage.includes("week-end") || normalizedMessage.includes("weekend")) {
+    return [6, 0];
+  }
+
+  const dayPatterns = [
+    { day: 1, pattern: /\b(?:lundi|lun|monday|mon)\b/g },
+    { day: 2, pattern: /\b(?:mardi|mar|tuesday|tue|tues)\b/g },
+    { day: 3, pattern: /\b(?:mercredi|mer|wednesday|wed)\b/g },
+    { day: 4, pattern: /\b(?:jeudi|jeu|thursday|thu|thurs)\b/g },
+    { day: 5, pattern: /\b(?:vendredi|ven|friday|fri)\b/g },
+    { day: 6, pattern: /\b(?:samedi|sam|saturday|sat)\b/g },
+    { day: 0, pattern: /\b(?:dimanche|dim|sunday|sun)\b/g }
+  ];
+
+  const matches = [];
+  for (const { day, pattern } of dayPatterns) {
+    for (const match of normalizedMessage.matchAll(pattern)) {
+      matches.push({ day, index: match.index ?? 0 });
+    }
+  }
+
+  matches.sort((left, right) => left.index - right.index);
+  return [...new Set(matches.map(match => match.day))];
+}
+
+function mergeLearningPlanDraft(draft, message) {
+  const nextDraft = {
+    ...draft,
+    topic: draft.topic,
+    topicTitle: draft.topicTitle,
+    totalDuration: draft.totalDuration || null,
+    sessionsPerWeek: draft.sessionsPerWeek || null,
+    minutesPerSession: draft.minutesPerSession || null,
+    preferredDays: Array.isArray(draft.preferredDays) ? draft.preferredDays : [],
+    preferredTime: draft.preferredTime || null
+  };
+
+  const parsedDuration = parseLearningDuration(message);
+  const parsedSessionsPerWeek = parseSessionsPerWeek(message);
+  const parsedMinutesPerSession = parseSessionDurationMinutes(message);
+  const parsedPreferredDays = parsePreferredDays(message);
+  const parsedPreferredTime = parsePreferredTime(message);
+  const trimmedMessage = typeof message === "string" ? message.trim() : "";
+
+  if (parsedDuration) {
+    nextDraft.totalDuration = parsedDuration;
+  } else if (!nextDraft.totalDuration && /^\d+\s*(?:semaines?|mois|jours?|ans?)$/i.test(trimmedMessage)) {
+    nextDraft.totalDuration = parseLearningDuration(trimmedMessage);
+  }
+
+  if (parsedSessionsPerWeek) {
+    nextDraft.sessionsPerWeek = parsedSessionsPerWeek;
+  } else if (!nextDraft.sessionsPerWeek && /^\d+$/.test(trimmedMessage)) {
+    nextDraft.sessionsPerWeek = Number(trimmedMessage);
+  }
+
+  if (parsedMinutesPerSession) {
+    nextDraft.minutesPerSession = parsedMinutesPerSession;
+  } else if (!nextDraft.minutesPerSession && /^\d+\s*(?:min|minutes?)?$/i.test(trimmedMessage)) {
+    nextDraft.minutesPerSession = Number(trimmedMessage.replace(/\D/g, ""));
+  }
+
+  if (parsedPreferredDays.length) {
+    nextDraft.preferredDays = parsedPreferredDays;
+  }
+
+  if (parsedPreferredTime) {
+    nextDraft.preferredTime = parsedPreferredTime;
+  }
+
+  return nextDraft;
+}
+
+function getLearningDraftMissingFields(draft) {
+  const missingFields = [];
+
+  if (!draft.totalDuration) {
+    missingFields.push("duration");
+  }
+
+  if (!draft.sessionsPerWeek) {
+    missingFields.push("sessionsPerWeek");
+  }
+
+  if (!draft.minutesPerSession) {
+    missingFields.push("minutesPerSession");
+  }
+
+  if (!Array.isArray(draft.preferredDays) || draft.preferredDays.length === 0) {
+    missingFields.push("preferredDays");
+  }
+
+  return missingFields;
+}
+
+function getWeekdayLabel(day, language = "fr") {
+  const labels = language === "en"
+    ? { 0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday" }
+    : { 0: "dimanche", 1: "lundi", 2: "mardi", 3: "mercredi", 4: "jeudi", 5: "vendredi", 6: "samedi" };
+
+  return labels[day] || "";
+}
+
+function formatPreferredDays(days = [], language = "fr") {
+  return days.map(day => getWeekdayLabel(day, language)).filter(Boolean).join(language === "en" ? ", " : ", ");
+}
+
+function buildLearningPlanPrompt(draft, language = "fr") {
+  const topicTitle = draft.topicTitle || formatLearningTopicTitle(draft.topic);
+  const missingFields = getLearningDraftMissingFields(draft);
+
+  if (missingFields.length === 4) {
+    return language === "en"
+      ? `Okay for ${topicTitle}. Tell me the total duration, how many sessions per week, how long each session should last, and which days you prefer.`
+      : `D'accord pour ${topicTitle}. Dis-moi pendant combien de temps tu veux travailler ce sujet, combien de séances par semaine, combien de temps par séance, et quels jours tu préfères.`;
+  }
+
+  const parts = missingFields.map((field) => {
+    if (field === "duration") return language === "en" ? "the total duration" : "la durée totale";
+    if (field === "sessionsPerWeek") return language === "en" ? "the number of sessions per week" : "le nombre de séances par semaine";
+    if (field === "minutesPerSession") return language === "en" ? "the duration of each session" : "la durée de chaque séance";
+    return language === "en" ? "your preferred days" : "tes jours préférés";
+  });
+
+  return language === "en"
+    ? `I still need ${parts.join(", ")} for ${topicTitle}.`
+    : `Il me manque encore ${parts.join(", ")} pour ${topicTitle}.`;
+}
+
+function getPlanningStartDate(planning) {
+  const parsedDate = parseDateKey(typeof planning?.currentDate === "string" ? planning.currentDate.slice(0, 10) : "");
+  if (parsedDate) return parsedDate;
+  return new Date();
+}
+
+function buildWeeklyLearningDays(preferredDays, sessionsPerWeek) {
+  const uniquePreferredDays = [...new Set(preferredDays)];
+  const fallbackDays = [1, 2, 3, 4, 5, 6, 0];
+  const weeklyDays = uniquePreferredDays.slice(0, sessionsPerWeek);
+
+  for (const day of fallbackDays) {
+    if (weeklyDays.length >= sessionsPerWeek) break;
+    if (!weeklyDays.includes(day)) {
+      weeklyDays.push(day);
+    }
+  }
+
+  return weeklyDays;
+}
+
+function createLearningPlanEvents({ planning, draft, language = "fr" }) {
+  const startDate = getPlanningStartDate(planning);
+  const weeklyDays = buildWeeklyLearningDays(draft.preferredDays, draft.sessionsPerWeek);
+  const weeklyDaySet = new Set(weeklyDays);
+  const totalSessions = Math.max(1, draft.totalDuration.totalWeeks * draft.sessionsPerWeek);
+  const defaultTime = draft.preferredTime || "18:00";
+  const topicTitle = draft.topicTitle || formatLearningTopicTitle(draft.topic);
+  const actions = [];
+
+  let cursor = new Date(startDate);
+  cursor.setHours(12, 0, 0, 0);
+
+  while (actions.length < totalSessions) {
+    if (weeklyDaySet.has(cursor.getDay())) {
+      const event = {
+        id: getNextPlanningEventId(planning),
+        date: formatDateKeyFromDate(cursor),
+        time: defaultTime,
+        title: `${topicTitle} séance ${actions.length + 1}`,
+        description: language === "en"
+          ? `${draft.minutesPerSession} min learning session`
+          : `Séance de ${draft.minutesPerSession} min`,
+        meta: "Ajouté par Milo"
+      };
+
+      planning.events.push(event);
+      planning.selectedEventId = event.id;
+      actions.push({
+        type: "add_planning_event",
+        event,
+        openPlanning: actions.length === 0
+      });
+    }
+
+    cursor = addDays(cursor, 1);
+  }
+
+  return {
+    actions,
+    totalSessions,
+    defaultTime,
+    weeklyDays,
+    topicTitle
+  };
+}
+
+function buildLearningPlanCreatedReply({ draft, totalSessions, defaultTime, weeklyDays, topicTitle, language = "fr" }) {
+  const daysLabel = formatPreferredDays(weeklyDays, language);
+
+  if (language === "en") {
+    return `I added ${totalSessions} reminders for ${topicTitle}: ${draft.sessionsPerWeek} sessions per week, ${draft.minutesPerSession} min each, on ${daysLabel}, at ${defaultTime}.`;
+  }
+
+  return `J'ai ajouté ${totalSessions} rappels pour ${topicTitle} : ${draft.sessionsPerWeek} séances par semaine, ${draft.minutesPerSession} min par séance, les ${daysLabel}, à ${defaultTime}.`;
+}
+
+function maybeHandleLearningPlanFlow({ message, language, planning, sessionId }) {
+  const normalizedMessage = normalizeText(typeof message === "string" ? message : "");
+  const existingDraft = getLearningPlanDraft(sessionId);
+
+  if (existingDraft && /\b(?:annule|annuler|stop|cancel)\b/i.test(normalizedMessage)) {
+    const topicTitle = existingDraft.topicTitle || formatLearningTopicTitle(existingDraft.topic);
+    clearLearningPlanDraft(sessionId);
+    return {
+      reply: language === "en"
+        ? `Okay, I cancelled the plan for ${topicTitle}.`
+        : `D'accord, j'ai annulé la planification pour ${topicTitle}.`,
+      actions: [],
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  if (!existingDraft) {
+    const learningIntent = detectLearningGoalIntent(message);
+    if (!learningIntent?.topic) {
+      return null;
+    }
+
+    const initialDraft = mergeLearningPlanDraft({
+      topic: learningIntent.topic,
+      topicTitle: formatLearningTopicTitle(learningIntent.rawTopic),
+      totalDuration: null,
+      sessionsPerWeek: null,
+      minutesPerSession: null,
+      preferredDays: [],
+      preferredTime: null
+    }, message);
+
+    const missingFields = getLearningDraftMissingFields(initialDraft);
+    if (missingFields.length > 0) {
+      saveLearningPlanDraft(sessionId, initialDraft);
+      return {
+        reply: buildLearningPlanPrompt(initialDraft, language),
+        actions: [],
+        memory: getMemorySnapshot(sessionId)
+      };
+    }
+
+    const planResult = createLearningPlanEvents({ planning, draft: initialDraft, language });
+    clearLearningPlanDraft(sessionId);
+    return {
+      reply: buildLearningPlanCreatedReply({
+        draft: initialDraft,
+        totalSessions: planResult.totalSessions,
+        defaultTime: planResult.defaultTime,
+        weeklyDays: planResult.weeklyDays,
+        topicTitle: planResult.topicTitle,
+        language
+      }),
+      actions: planResult.actions,
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  const updatedDraft = mergeLearningPlanDraft(existingDraft, message);
+
+  if (updatedDraft.sessionsPerWeek && updatedDraft.sessionsPerWeek > 7) {
+    saveLearningPlanDraft(sessionId, {
+      ...updatedDraft,
+      sessionsPerWeek: null
+    });
+
+    return {
+      reply: language === "en"
+        ? "I need a number of sessions per week between 1 and 7."
+        : "J'ai besoin d'un nombre de séances par semaine compris entre 1 et 7.",
+      actions: [],
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  if (updatedDraft.minutesPerSession && updatedDraft.minutesPerSession > 480) {
+    saveLearningPlanDraft(sessionId, {
+      ...updatedDraft,
+      minutesPerSession: null
+    });
+
+    return {
+      reply: language === "en"
+        ? "Tell me a session duration shorter than 8 hours."
+        : "Indique-moi une durée de séance inférieure à 8 heures.",
+      actions: [],
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  const missingFields = getLearningDraftMissingFields(updatedDraft);
+  if (missingFields.length > 0) {
+    saveLearningPlanDraft(sessionId, updatedDraft);
+    return {
+      reply: buildLearningPlanPrompt(updatedDraft, language),
+      actions: [],
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  const planResult = createLearningPlanEvents({ planning, draft: updatedDraft, language });
+  clearLearningPlanDraft(sessionId);
+
+  return {
+    reply: buildLearningPlanCreatedReply({
+      draft: updatedDraft,
+      totalSessions: planResult.totalSessions,
+      defaultTime: planResult.defaultTime,
+      weeklyDays: planResult.weeklyDays,
+      topicTitle: planResult.topicTitle,
+      language
+    }),
+    actions: planResult.actions,
+    memory: getMemorySnapshot(sessionId)
+  };
+}
+
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -341,16 +828,7 @@ function isRateLimitError(error) {
 }
 
 function getModelCandidates(model) {
-  if (getAIProvider() !== "gemini") {
-    return [model];
-  }
-
-  const fallbackModels = [
-    model,
-    "gemini-2.5-flash"
-  ];
-
-  return [...new Set(fallbackModels.filter(Boolean))];
+  return [model].filter(Boolean);
 }
 
 async function createChatCompletionWithRetry(client, payload, maxAttempts = 3) {
@@ -711,44 +1189,64 @@ function getAssistantErrorReply(error) {
     : typeof error?.error === "string"
       ? error.error
       : "";
+  const normalizedMessage = rawMessage.toLowerCase();
+  const statusLabel = error?.status ? `HTTP ${error.status}` : "Erreur API";
+  const codeLabel = typeof error?.code === "string" ? error.code : "";
+  const sanitizedMessage = rawMessage
+    .replace(/sk-[A-Za-z0-9_-]+/g, "[redacted-key]")
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+    .trim();
+
+  function withDetails(message) {
+    const details = [statusLabel, codeLabel].filter(Boolean).join(" · ");
+    if (!sanitizedMessage) {
+      return details ? `${message} (${details})` : message;
+    }
+
+    return `${message} (${details}${details ? " · " : ""}${sanitizedMessage})`;
+  }
 
   if (!getAIKey()) {
     return `La clé ${providerLabel} n'est pas configurée. Ajoute ${keyEnvName} dans le fichier .env pour activer Milo.`;
   }
 
   if (rawMessage.includes("Incorrect API key provided")) {
-    return `La clé ${providerLabel} est invalide. Remplace ${keyEnvName} par une vraie clé API générée depuis la console du provider.`;
+    return withDetails(`La clé ${providerLabel} est invalide. Remplace ${keyEnvName} par une vraie clé API générée depuis la console OpenAI.`);
   }
 
-  if (rawMessage.includes("API key not valid") || rawMessage.includes("invalid API key") || rawMessage.includes("API_KEY_INVALID")) {
-    return `La clé ${providerLabel} est invalide. Vérifie ${keyEnvName} dans le fichier .env.`;
+  if (normalizedMessage.includes("api key not valid") || normalizedMessage.includes("invalid api key") || normalizedMessage.includes("api_key_invalid")) {
+    return withDetails(`La clé ${providerLabel} est invalide. Vérifie ${keyEnvName} dans le fichier .env.`);
   }
 
-  if (rawMessage.includes("does not have permission to execute the specified operation") || rawMessage.includes("doesn't have any credits or licenses yet")) {
-    return `Le compte ${providerLabel} est bien connecté, mais cette équipe n'a pas encore de crédits ou de licence active. Active la facturation dans la console xAI puis réessaie.`;
+  if (normalizedMessage.includes("billing") || normalizedMessage.includes("payment") || normalizedMessage.includes("organization must be verified") || normalizedMessage.includes("billing_hard_limit_reached")) {
+    return withDetails(`Le compte ${providerLabel} est bien connecté, mais la facturation ou la vérification du compte bloque encore l'accès API. Vérifie ton compte OpenAI puis réessaie.`);
   }
 
-  if (rawMessage.includes("PERMISSION_DENIED") || rawMessage.includes("SERVICE_DISABLED") || rawMessage.includes("API has not been used") || rawMessage.includes("Generative Language API")) {
-    return `Le compte ${providerLabel} n'est pas autorisé à utiliser l'API pour ce projet. Vérifie l'activation de l'API Gemini et les autorisations du projet Google AI Studio.`;
+  if (normalizedMessage.includes("does not exist") || normalizedMessage.includes("model_not_found")) {
+    return withDetails(`Le modèle configuré dans le fichier .env est introuvable ou indisponible pour ce compte.`);
   }
 
-  if (rawMessage.includes("RESOURCE_EXHAUSTED") || rawMessage.includes("quota") || rawMessage.includes("rate limit")) {
-    return `Le quota ${providerLabel} est atteint ou limité pour le moment. Réessaie plus tard ou augmente les quotas du projet.`;
+  if (normalizedMessage.includes("permission") || normalizedMessage.includes("not authorized") || normalizedMessage.includes("unsupported") || error?.status === 403) {
+    return withDetails(`Le compte ${providerLabel} n'est pas autorisé à utiliser ce modèle ou cette API. Vérifie les droits du projet et le modèle configuré dans le fichier .env.`);
+  }
+
+  if (normalizedMessage.includes("quota") || normalizedMessage.includes("rate limit")) {
+    return withDetails(`Le quota ${providerLabel} est atteint ou limité pour le moment. Réessaie plus tard ou augmente les quotas du projet.`);
   }
 
   if (error?.code === "insufficient_quota" || (error?.status === 429 && error?.type === "insufficient_quota")) {
-    return `Milo est temporairement indisponible car le quota ${providerLabel} du projet est atteint. Vérifie la facturation ou utilise une autre clé API.`;
+    return withDetails(`Milo est temporairement indisponible car le quota ${providerLabel} du projet est atteint. Vérifie la facturation ou utilise une autre clé API.`);
   }
 
   if (error?.status === 429) {
-    return "Milo reçoit trop de requêtes en ce moment. Réessaie dans quelques instants.";
+    return withDetails("Milo reçoit trop de requêtes en ce moment. Réessaie dans quelques instants.");
   }
 
   if (error?.status === 401 || error?.code === "invalid_api_key") {
-    return `La clé ${providerLabel} semble invalide. Vérifie ${keyEnvName} dans le fichier .env.`;
+    return withDetails(`La clé ${providerLabel} semble invalide. Vérifie ${keyEnvName} dans le fichier .env.`);
   }
 
-  return "Milo ne peut pas répondre pour le moment. Réessaie dans un instant.";
+  return withDetails("Milo ne peut pas répondre pour le moment. Réessaie dans un instant.");
 }
 
 app.post("/api/chat", async (req, res) => {
@@ -761,6 +1259,20 @@ app.post("/api/chat", async (req, res) => {
     const safeStudyContext = sanitizeStudyContext(studyContext);
     const safeSessionId = getSessionId(sessionId);
     const safeAgentType = agent === "education" ? "education" : "general";
+
+    if (safeAgentType === "general") {
+      const learningPlanResponse = maybeHandleLearningPlanFlow({
+        message,
+        language,
+        planning: safePlanning,
+        sessionId: safeSessionId
+      });
+
+      if (learningPlanResponse) {
+        res.json(learningPlanResponse);
+        return;
+      }
+    }
 
     const response = await runAgentCompletion({
       client,

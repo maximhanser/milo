@@ -72,6 +72,8 @@
     const chatSessionStorageKey = 'milo.chatSessionId';
     const educationDocumentsStorageKey = 'milo.educationDocuments';
     const educationSourceStorageKey = 'milo.educationSourceText';
+    const planningStorageKey = 'milo.planning';
+    const monthlyPrimaryTasksStorageKey = 'milo.monthlyPrimaryTasks';
     let savedProfileSnapshot = null;
     let currentProfilePhotoData = '';
     let currentLanguage = 'fr';
@@ -80,6 +82,8 @@
     let isEducationUploadPanelOpen = false;
     let educationDocuments = [];
     let selectedEducationDocumentId = null;
+    let monthlyPrimaryTasks = [];
+    let pendingMonthlyTaskPrompt = null;
 
     const translations = {
       fr: {
@@ -89,6 +93,17 @@
         navProgress: 'Progress',
         homeToday: 'Aujourd\'hui',
         homeTomorrow: 'Demain',
+        homeMonthlyPrimary: 'Tâches principales mensuelles',
+        homeEmptyToday: 'Aucune tâche prévue aujourd\'hui.',
+        homeEmptyTomorrow: 'Aucune tâche prévue demain.',
+        homeEmptyMonthlyPrimary: 'Aucune tâche principale pour ce mois.',
+        homeEmptyKicker: 'Aucun rappel',
+        homeMonthlyPrimaryBadge: '{count} rappels ce mois',
+        homeMonthBadge: 'Mois actif',
+        monthlyTaskSuggestion: 'Je viens de créer {count} rappels ce mois pour {title}. Veux-tu aussi l\'ajouter à ta liste des tâches principales mensuelles ? Réponds par oui ou non.',
+        monthlyTaskAddedConfirm: '{title} a été ajouté à tes tâches principales mensuelles.',
+        monthlyTaskSkippedConfirm: 'Très bien, je ne l\'ajoute pas à la liste mensuelle.',
+        monthlyTaskClarify: 'Réponds simplement par oui ou non pour me dire si je dois ajouter cette tâche à la liste mensuelle.',
         homeCard1Title: 'Révision — Maths',
         homeCard1Sub: '14h00 · 45 min',
         homeCard1Badge: 'Planifié par Milo',
@@ -202,6 +217,17 @@
         navProgress: 'Progress',
         homeToday: 'Today',
         homeTomorrow: 'Tomorrow',
+        homeMonthlyPrimary: 'Main monthly tasks',
+        homeEmptyToday: 'No task scheduled today.',
+        homeEmptyTomorrow: 'No task scheduled tomorrow.',
+        homeEmptyMonthlyPrimary: 'No main task for this month.',
+        homeEmptyKicker: 'No reminder',
+        homeMonthlyPrimaryBadge: '{count} reminders this month',
+        homeMonthBadge: 'Active month',
+        monthlyTaskSuggestion: 'I just created {count} reminders this month for {title}. Do you also want me to add it to your main monthly tasks list? Answer yes or no.',
+        monthlyTaskAddedConfirm: '{title} was added to your main monthly tasks list.',
+        monthlyTaskSkippedConfirm: 'Okay, I will not add it to the monthly list.',
+        monthlyTaskClarify: 'Reply with yes or no so I know whether to add this task to the monthly list.',
         homeCard1Title: 'Study session — Math',
         homeCard1Sub: '2:00 PM · 45 min',
         homeCard1Badge: 'Planned by Milo',
@@ -338,6 +364,7 @@ function applyTranslations() {
   document.documentElement.lang = currentLanguage === 'en' ? 'en' : 'fr';
   setText('home-today-label', 'homeToday');
   setText('home-tomorrow-label', 'homeTomorrow');
+  setText('home-monthly-primary-label', 'homeMonthlyPrimary');
   setText('home-card-1-title', 'homeCard1Title');
   setText('home-card-1-sub', 'homeCard1Sub');
   setText('home-card-1-badge', 'homeCard1Badge');
@@ -446,6 +473,7 @@ function applyTranslations() {
       if (titleEl) titleEl.textContent = t(panelTitleKey);
     }
   }
+  renderHomePage();
 }
 
 function applyLanguage(languageValue) {
@@ -512,8 +540,10 @@ const initialProfileData = loadProfileData();
 applyProfileData(initialProfileData);
 savedProfileSnapshot = profileDataToSnapshot(initialProfileData);
 initializeProfileForm();
-applyLanguage(initialProfileData.language);
 loadEducationState();
+loadPlanningState();
+loadMonthlyPrimaryTasks();
+applyLanguage(initialProfileData.language);
 updateProfileSaveState();
 
 avatarPageTriggers.forEach(trigger => {
@@ -636,6 +666,7 @@ function showHome() {
   document.getElementById('education-page').style.display = 'none';
   document.getElementById('personal-info-page').style.display = 'none';
   if (miloBtnWrap) miloBtnWrap.style.display = 'block';
+  renderHomePage();
 }
 
 function showEducation() {
@@ -718,14 +749,16 @@ function applyProfileData(profile) {
   updateAvatarImages(currentProfilePhotoData);
 }
 
-function collectProfileData() {
+function collectProfileData(options = {}) {
+  const { includePhoto = true } = options;
+
   return {
     firstName: profileFirstNameInput?.value.trim() || '',
     email: profileEmailInput?.value.trim() || '',
     phone: profilePhoneInput?.value.trim() || '',
     language: profileLanguageSelect?.value || 'Français',
     accountType: profileAccountTypeSelect?.value || 'Personnel',
-    photo: currentProfilePhotoData || ''
+    photo: includePhoto ? (currentProfilePhotoData || '') : ''
   };
 }
 
@@ -1076,7 +1109,7 @@ function renderChatHistory() {
     chatHistoryEl.innerHTML = `<div class="chat-empty">${t('chatEmpty')}</div>`;
     return;
   }
-  chatHistoryEl.innerHTML = chatHistory.map(msg => `<div class="chat-bubble ${msg.role}">${msg.text}</div>`).join('');
+  chatHistoryEl.innerHTML = chatHistory.map(msg => `<div class="chat-bubble ${msg.role}">${escapeHtml(msg.text)}</div>`).join('');
   chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 }
 
@@ -1550,7 +1583,7 @@ function getAgentRequestPayload(message) {
     history: chatHistory,
     language: currentLanguage,
     sessionId: getChatSessionId(),
-    profile: collectProfileData(),
+    profile: collectProfileData({ includePhoto: false }),
     planning: {
       view: planningState.view,
       currentDate: planningState.currentDate.toISOString(),
@@ -1567,20 +1600,338 @@ function getAgentRequestPayload(message) {
   };
 }
 
+function parseBooleanReply(text) {
+  const normalized = (text || '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .trim()
+    .toLowerCase();
+
+  if (/^(oui|ouais|yes|yep|ok|okay|vas-y|go|ajoute|ajoute-la|ajoute le)$/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^(non|no|nope|annule|laisse|laisse tomber|n'ajoute pas|ne l'ajoute pas)$/i.test(normalized)) {
+    return false;
+  }
+
+  return null;
+}
+
+function getMonthKeyFromDateKey(dateKey = '') {
+  return /^\d{4}-\d{2}/.test(dateKey) ? dateKey.slice(0, 7) : '';
+}
+
+function parseDateKeyString(dateKey) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey || '');
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
+}
+
+function parseMonthKey(monthKey) {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey || '');
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1, 12, 0, 0, 0);
+}
+
+function formatMonthKey(date) {
+  return formatDateKey(date).slice(0, 7);
+}
+
+function getCanonicalTaskTitle(title = '') {
+  const cleanTitle = (title || '')
+    .replace(/\s+(?:seance|séance|session)\s+\d+$/i, '')
+    .trim();
+  return cleanTitle || (title || '').trim() || t('untitledTask');
+}
+
+function normalizeTaskIdentityTitle(title = '') {
+  return getCanonicalTaskTitle(title)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getMonthlyTaskIdentity(monthKey, title) {
+  return `${monthKey}::${normalizeTaskIdentityTitle(title)}`;
+}
+
+function loadPlanningState() {
+  try {
+    const rawPlanning = window.localStorage.getItem(planningStorageKey);
+    if (!rawPlanning) {
+      ensurePlanningEventsStructure();
+      return;
+    }
+
+    const parsedPlanning = JSON.parse(rawPlanning);
+    planningState.view = parsedPlanning?.view === 'month' ? 'month' : 'day';
+    planningState.currentDate = parsedPlanning?.currentDate ? new Date(parsedPlanning.currentDate) : new Date();
+    if (Number.isNaN(planningState.currentDate.getTime())) {
+      planningState.currentDate = new Date();
+    }
+    planningState.events = Array.isArray(parsedPlanning?.events) ? parsedPlanning.events : [];
+    planningState.selectedEventId = typeof parsedPlanning?.selectedEventId === 'number' ? parsedPlanning.selectedEventId : null;
+    planningState.nextEventId = typeof parsedPlanning?.nextEventId === 'number' ? parsedPlanning.nextEventId : 1;
+    ensurePlanningEventsStructure();
+  } catch {
+    planningState.currentDate = new Date();
+    planningState.events = [];
+    planningState.selectedEventId = null;
+    planningState.nextEventId = 1;
+  }
+}
+
+function persistPlanningState() {
+  window.localStorage.setItem(planningStorageKey, JSON.stringify({
+    view: planningState.view,
+    currentDate: planningState.currentDate.toISOString(),
+    selectedEventId: planningState.selectedEventId,
+    nextEventId: planningState.nextEventId,
+    events: planningState.events
+  }));
+}
+
+function loadMonthlyPrimaryTasks() {
+  try {
+    const rawTasks = window.localStorage.getItem(monthlyPrimaryTasksStorageKey);
+    if (!rawTasks) {
+      monthlyPrimaryTasks = [];
+      return;
+    }
+
+    monthlyPrimaryTasks = JSON.parse(rawTasks)
+      .filter(task => task && typeof task.title === 'string' && typeof task.monthKey === 'string')
+      .map(task => ({
+        id: typeof task.id === 'string' ? task.id : `monthly-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: getCanonicalTaskTitle(task.title),
+        monthKey: task.monthKey,
+        reminderCount: Number.isFinite(task.reminderCount) ? task.reminderCount : 0,
+        createdAt: typeof task.createdAt === 'number' ? task.createdAt : Date.now()
+      }));
+  } catch {
+    monthlyPrimaryTasks = [];
+  }
+}
+
+function persistMonthlyPrimaryTasks() {
+  window.localStorage.setItem(monthlyPrimaryTasksStorageKey, JSON.stringify(monthlyPrimaryTasks));
+}
+
+function findMonthlyPrimaryTask(monthKey, title) {
+  const identity = getMonthlyTaskIdentity(monthKey, title);
+  return monthlyPrimaryTasks.find(task => getMonthlyTaskIdentity(task.monthKey, task.title) === identity) || null;
+}
+
+function addMonthlyPrimaryTask({ monthKey, title, reminderCount }) {
+  const canonicalTitle = getCanonicalTaskTitle(title);
+  const existingTask = findMonthlyPrimaryTask(monthKey, canonicalTitle);
+
+  if (existingTask) {
+    existingTask.reminderCount = Math.max(existingTask.reminderCount || 0, reminderCount || 0);
+    persistMonthlyPrimaryTasks();
+    renderHomePage();
+    return existingTask;
+  }
+
+  const task = {
+    id: `monthly-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: canonicalTitle,
+    monthKey,
+    reminderCount: reminderCount || 0,
+    createdAt: Date.now()
+  };
+
+  monthlyPrimaryTasks.push(task);
+  monthlyPrimaryTasks.sort((left, right) => (right.reminderCount - left.reminderCount) || left.title.localeCompare(right.title));
+  persistMonthlyPrimaryTasks();
+  renderHomePage();
+  return task;
+}
+
+function getCurrentHomeMonthKey() {
+  return formatMonthKey(new Date());
+}
+
+function getEventBadgeClass(event) {
+  if ((event.meta || '').includes('Milo')) return 'badge-purple';
+  if ((event.meta || '').toLowerCase().includes('voice')) return 'badge-amber';
+  return 'badge-teal';
+}
+
+function getEventDotColor(event) {
+  if ((event.meta || '').includes('Milo')) return 'var(--accent)';
+  if ((event.meta || '').toLowerCase().includes('voice')) return 'var(--amber)';
+  return 'var(--teal)';
+}
+
+function formatHomeEventSubtitle(event) {
+  const segments = [event.time || ''];
+  if (event.description) {
+    segments.push(event.description);
+  }
+  return segments.filter(Boolean).join(' · ');
+}
+
+function formatMonthLabelFromKey(monthKey) {
+  const date = parseMonthKey(monthKey);
+  if (!date) return monthKey;
+  return date.toLocaleDateString(getCurrentLocale(), { month: 'long', year: 'numeric' });
+}
+
+function renderHomeEmptyState(message) {
+  return `<div class="home-empty-card"><div>${escapeHtml(message)}</div><div class="home-empty-kicker">${escapeHtml(t('homeEmptyKicker'))}</div></div>`;
+}
+
+function renderHomeEventCards(events = []) {
+  return events.map((event) => {
+    const badgeClass = getEventBadgeClass(event);
+    const badgeText = event.meta || t('homeMonthBadge');
+    return `<button type="button" class="card" data-home-date-key="${escapeHtml(event.date)}" style="text-align:left;"><div class="card-dot" style="background:${getEventDotColor(event)}"></div><div class="card-body"><div class="card-title">${escapeHtml(event.title || t('untitledTask'))}</div><div class="card-sub">${escapeHtml(formatHomeEventSubtitle(event))}</div><span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span></div></button>`;
+  }).join('');
+}
+
+function renderMonthlyPrimaryCards(tasks = []) {
+  return tasks.map((task) => (`<button type="button" class="card home-monthly-card" data-home-month-key="${escapeHtml(task.monthKey)}" style="text-align:left;"><div class="card-dot" style="background:var(--accent)"></div><div class="card-body"><div class="card-title">${escapeHtml(task.title)}</div><div class="card-sub">${escapeHtml(formatMonthLabelFromKey(task.monthKey))}</div><div class="home-monthly-meta"><span class="badge badge-purple">${escapeHtml(t('homeMonthlyPrimaryBadge', { count: task.reminderCount }))}</span><span class="home-monthly-subtle">${escapeHtml(t('homeMonthBadge'))}</span></div></div></button>`)).join('');
+}
+
+function renderHomePage() {
+  const todayList = document.getElementById('home-today-list');
+  const tomorrowList = document.getElementById('home-tomorrow-list');
+  const monthlyList = document.getElementById('home-monthly-primary-list');
+  if (!todayList || !tomorrowList || !monthlyList) return;
+
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayKey = formatDateKey(today);
+  const tomorrowKey = formatDateKey(tomorrow);
+  const currentMonthKey = getCurrentHomeMonthKey();
+
+  const sortByTime = (left, right) => (left.time || '').localeCompare(right.time || '');
+  const todayEvents = planningState.events.filter(event => event.date === todayKey).sort(sortByTime);
+  const tomorrowEvents = planningState.events.filter(event => event.date === tomorrowKey).sort(sortByTime);
+  const monthTasks = monthlyPrimaryTasks
+    .filter(task => task.monthKey === currentMonthKey)
+    .sort((left, right) => (right.reminderCount - left.reminderCount) || left.title.localeCompare(right.title));
+
+  todayList.innerHTML = todayEvents.length ? renderHomeEventCards(todayEvents) : renderHomeEmptyState(t('homeEmptyToday'));
+  tomorrowList.innerHTML = tomorrowEvents.length ? renderHomeEventCards(tomorrowEvents) : renderHomeEmptyState(t('homeEmptyTomorrow'));
+  monthlyList.innerHTML = monthTasks.length ? renderMonthlyPrimaryCards(monthTasks) : renderHomeEmptyState(t('homeEmptyMonthlyPrimary'));
+}
+
+function openPlanningMonth(monthKey) {
+  const monthDate = parseMonthKey(monthKey);
+  if (!monthDate) return;
+  planningState.currentDate = monthDate;
+  planningState.view = 'month';
+  openPanelSection('planning');
+}
+
+function maybeHandleMonthlyTaskPromptReply(text, mode = 'text') {
+  if (!pendingMonthlyTaskPrompt) return false;
+
+  const answer = parseBooleanReply(text);
+  if (answer === null) {
+    if (mode === 'text') {
+      addMessageToHistory('milo', t('monthlyTaskClarify'));
+    } else {
+      showToast(t('monthlyTaskClarify'));
+    }
+    return true;
+  }
+
+  const prompt = pendingMonthlyTaskPrompt;
+  pendingMonthlyTaskPrompt = null;
+
+  if (answer) {
+    addMonthlyPrimaryTask({
+      monthKey: prompt.monthKey,
+      title: prompt.title,
+      reminderCount: prompt.reminderCount
+    });
+    if (mode === 'text') {
+      addMessageToHistory('milo', t('monthlyTaskAddedConfirm', { title: prompt.title }));
+    } else {
+      showToast(t('monthlyTaskAddedConfirm', { title: prompt.title }));
+    }
+    return true;
+  }
+
+  if (mode === 'text') {
+    addMessageToHistory('milo', t('monthlyTaskSkippedConfirm'));
+  } else {
+    showToast(t('monthlyTaskSkippedConfirm'));
+  }
+  return true;
+}
+
+function maybePromptForMonthlyPrimaryTasks(events = [], mode = 'text') {
+  if (!Array.isArray(events) || !events.length || pendingMonthlyTaskPrompt) return;
+
+  const groupedCandidates = new Map();
+  events.forEach((event) => {
+    const monthKey = getMonthKeyFromDateKey(event.date);
+    const canonicalTitle = getCanonicalTaskTitle(event.title);
+    const identity = getMonthlyTaskIdentity(monthKey, canonicalTitle);
+    if (!monthKey || !canonicalTitle) return;
+
+    const totalCount = planningState.events.filter((planningEvent) => (
+      getMonthKeyFromDateKey(planningEvent.date) === monthKey
+      && normalizeTaskIdentityTitle(planningEvent.title) === normalizeTaskIdentityTitle(canonicalTitle)
+    )).length;
+
+    if (totalCount <= 6 || findMonthlyPrimaryTask(monthKey, canonicalTitle)) return;
+
+    groupedCandidates.set(identity, {
+      monthKey,
+      title: canonicalTitle,
+      reminderCount: totalCount
+    });
+  });
+
+  const candidate = groupedCandidates.values().next().value;
+  if (!candidate) return;
+
+  pendingMonthlyTaskPrompt = candidate;
+  const promptText = t('monthlyTaskSuggestion', {
+    count: candidate.reminderCount,
+    title: candidate.title
+  });
+
+  if (mode === 'text') {
+    addMessageToHistory('milo', promptText);
+  } else {
+    showToast(promptText);
+  }
+}
+
 function getEducationAgentRequestPayload(message) {
   return {
     message,
     history: educationChatHistory,
     language: currentLanguage,
     sessionId: `${getChatSessionId()}-education`,
-    profile: collectProfileData(),
+    profile: collectProfileData({ includePhoto: false }),
     studyContext: getEducationStudyContext(message),
     agent: 'education'
   };
 }
 
+function getApiUrl(pathname) {
+  if (window.location?.origin && /^https?:/i.test(window.location.origin)) {
+    return `${window.location.origin}${pathname}`;
+  }
+
+  return `http://localhost:3000${pathname}`;
+}
+
 function applyAgentActions(actions = []) {
-  if (!Array.isArray(actions) || actions.length === 0) return;
+  if (!Array.isArray(actions) || actions.length === 0) return [];
+
+  const createdEvents = [];
 
   actions.forEach((action) => {
     if (!action?.event) return;
@@ -1615,6 +1966,7 @@ function applyAgentActions(actions = []) {
 
       planningState.events.push(createdEvent);
       planningState.selectedEventId = createdEvent.id;
+      createdEvents.push(createdEvent);
 
       if (action.openPlanning && action.event.date) {
         openPlanningDay(action.event.date);
@@ -1644,10 +1996,15 @@ function applyAgentActions(actions = []) {
   });
 
   renderPlanningPanel();
+  return createdEvents;
 }
 
 async function sendCommand(text, mode = 'text') {
   const isEducationMode = mode === 'education-text';
+
+  if (!isEducationMode && maybeHandleMonthlyTaskPromptReply(text, mode)) {
+    return;
+  }
 
   if (isEducationMode) {
     if (isEducationAgentRequestPending) return;
@@ -1667,7 +2024,8 @@ async function sendCommand(text, mode = 'text') {
 
   const reminder = parseReminder(text);
   if (!isEducationMode && reminder) {
-    const key = formatDateKey(planningState.currentDate);
+    const today = new Date();
+    const key = formatDateKey(today);
     const reminderEvent = createPlanningEvent({
       date: key,
       time: reminder.time,
@@ -1689,7 +2047,7 @@ async function sendCommand(text, mode = 'text') {
   }
 
     try {
-    const res = await fetch("http://localhost:3000/api/chat", {
+    const res = await fetch(getApiUrl('/api/chat'), {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1697,10 +2055,15 @@ async function sendCommand(text, mode = 'text') {
       body: JSON.stringify(isEducationMode ? getEducationAgentRequestPayload(text) : getAgentRequestPayload(text))
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.reply || `${res.status} ${res.statusText}`.trim());
+    }
+
     const reply = data.reply || t('chatUnknown');
+    let createdEvents = [];
     if (!isEducationMode) {
-      applyAgentActions(data.actions);
+      createdEvents = applyAgentActions(data.actions);
       setAgentRequestPending(false);
       miloBtn.classList.remove('thinking');
       setPanelState('idle');
@@ -1711,10 +2074,16 @@ async function sendCommand(text, mode = 'text') {
 
     if (mode === 'text') {
       addMessageToHistory('milo', reply);
+      if (!isEducationMode) {
+        maybePromptForMonthlyPrimaryTasks(createdEvents, mode);
+      }
     } else if (isEducationMode) {
       addMessageToEducationHistory('milo', reply);
     } else {
       showToast(reply);
+      if (!isEducationMode) {
+        maybePromptForMonthlyPrimaryTasks(createdEvents, mode);
+      }
     }
   } catch (err) {
     console.error('Error in sendCommand:', err);
@@ -1977,12 +2346,16 @@ function initializePlanningInteractions() {
     if (activeTitle) {
       activeTitle.textContent = selectedEvent.title || t('untitledTask');
     }
+    persistPlanningState();
+    renderHomePage();
   });
 
   descriptionInput.addEventListener('input', (event) => {
     const selectedEvent = getSelectedPlanningEvent();
     if (!selectedEvent) return;
     selectedEvent.description = event.target.value;
+    persistPlanningState();
+    renderHomePage();
   });
 }
 
@@ -2000,7 +2373,9 @@ function sameDay(a, b) {
 
 function renderPlanningPanel() {
   ensurePlanningEventsStructure();
+  persistPlanningState();
   initializePlanningInteractions();
+  renderHomePage();
 
   const dayBtn = document.getElementById('view-day-btn-panel');
   const monthBtn = document.getElementById('view-month-btn-panel');
@@ -2067,4 +2442,18 @@ function renderPlanningPanel() {
     
   }
 }
+
+document.addEventListener('click', (event) => {
+  const homeDayCard = event.target.closest('[data-home-date-key]');
+  if (homeDayCard) {
+    openPlanningDay(homeDayCard.dataset.homeDateKey);
+    openPanelSection('planning');
+    return;
+  }
+
+  const homeMonthCard = event.target.closest('[data-home-month-key]');
+  if (homeMonthCard) {
+    openPlanningMonth(homeMonthCard.dataset.homeMonthKey);
+  }
+});
 

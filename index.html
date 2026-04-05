@@ -152,6 +152,51 @@
   .badge-teal { background: rgba(62,207,170,0.15); color: #3ecfaa; }
   .badge-amber { background: rgba(245,166,35,0.15); color: #f5a623; }
 
+  .home-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .home-empty-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    border: 0.5px dashed rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.02);
+    color: var(--text2);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .home-empty-kicker {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .home-monthly-card {
+    background: linear-gradient(180deg, rgba(124,109,240,0.12), rgba(124,109,240,0.05));
+    border-color: rgba(124,109,240,0.2);
+  }
+
+  .home-monthly-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .home-monthly-subtle {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
   /* AI Toast */
   .toast {
     position: absolute;
@@ -1370,42 +1415,13 @@
 
   <div class="scroll-area">
     <div class="section-label" id="home-today-label">Aujourd'hui</div>
-    <div class="card" style="animation-delay:0.05s">
-      <div class="card-dot" style="background:var(--accent)"></div>
-      <div class="card-body">
-        <div class="card-title" id="home-card-1-title">Révision — Maths</div>
-        <div class="card-sub" id="home-card-1-sub">14h00 · 45 min</div>
-        <span class="badge badge-purple" id="home-card-1-badge">Planifié par Milo</span>
-      </div>
-    </div>
-
-    <div class="card" style="animation-delay:0.1s">
-      <div class="card-dot" style="background:var(--amber)"></div>
-      <div class="card-body">
-        <div class="card-title" id="home-card-2-title">Courses à faire</div>
-        <div class="card-sub" id="home-card-2-sub">Lait, pain, tomates…</div>
-        <span class="badge badge-amber" id="home-card-2-badge">Rappel 18h00</span>
-      </div>
-    </div>
+    <div class="home-list" id="home-today-list"></div>
 
     <div class="section-label" id="home-tomorrow-label">Demain</div>
-    <div class="card" style="animation-delay:0.15s">
-      <div class="card-dot" style="background:var(--teal)"></div>
-      <div class="card-body">
-        <div class="card-title" id="home-card-3-title">Sport — Running</div>
-        <div class="card-sub" id="home-card-3-sub">07h30 · 30 min</div>
-        <span class="badge badge-teal" id="home-card-3-badge">Objectif semaine</span>
-      </div>
-    </div>
+    <div class="home-list" id="home-tomorrow-list"></div>
 
-    <div class="card" style="animation-delay:0.2s">
-      <div class="card-dot" style="background:var(--accent)"></div>
-      <div class="card-body">
-        <div class="card-title" id="home-card-4-title">Révision — Histoire</div>
-        <div class="card-sub" id="home-card-4-sub">19h00 · 1h</div>
-        <span class="badge badge-purple" id="home-card-4-badge">Planifié par Milo</span>
-      </div>
-    </div>
+    <div class="section-label" id="home-monthly-primary-label">Tâches principales mensuelles</div>
+    <div class="home-list" id="home-monthly-primary-list"></div>
   </div>
   </div>
 
