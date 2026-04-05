@@ -80,6 +80,7 @@
     const settingsMenuClose = document.getElementById('settings-menu-close');
     const themeToggle = document.getElementById('theme-toggle');
     const dailyNewsThemeSelect = document.getElementById('daily-news-theme');
+    const notificationsToggleButton = document.getElementById('notifications-toggle-btn');
     const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
     const avatarImages = document.querySelectorAll('.profile-avatar-image');
     const profileFirstNameInput = document.getElementById('profile-first-name');
@@ -115,6 +116,11 @@
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
     let dailyNewsTheme = 'none';
+    let notificationsToken = '';
+    let notificationsEnabled = false;
+    let notificationsSyncTimeout = null;
+    let firebaseMessagingInstance = null;
+    let firebaseServiceWorkerRegistration = null;
 
     const translations = {
       fr: {
@@ -219,6 +225,10 @@
         settingsTheme: 'Thème',
         settingsDailyNewsTheme: 'Thème Daily News',
         settingsPreferences: 'Préférences',
+        notificationsEnable: 'Activer les notifications',
+        notificationsEnabledLabel: 'Notifications activées',
+        notificationsBlocked: 'Notifications bloquées',
+        notificationsUnavailable: 'Notifications indisponibles',
         newsThemeNone: 'Aucun',
         newsThemeMusic: 'Musique',
         newsThemePolitics: 'Politique',
@@ -262,6 +272,11 @@
         toastDark: 'Mode sombre activé',
         toastProfileSaved: 'Profil enregistré',
         toastDailyNewsThemeSaved: 'Daily News réglé sur : {theme}',
+        toastNotificationsEnabled: 'Notifications activées sur cet appareil.',
+        toastNotificationsDenied: 'Autorise les notifications dans le navigateur pour recevoir les rappels.',
+        toastNotificationsUnsupported: 'Les notifications push ne sont pas disponibles sur cet appareil ou ce navigateur.',
+        toastNotificationsConfigMissing: 'La configuration Firebase web est incomplète.',
+        toastNotificationsSyncFailed: 'Impossible de synchroniser les notifications pour le moment.',
         toastImportImage: 'Importe un fichier JPEG ou PNG',
         toastSpeechUnavailable: 'La reconnaissance vocale n\'est pas disponible.',
         chatUnknown: 'Je n\'ai pas compris.',
@@ -377,6 +392,10 @@
         settingsTheme: 'Theme',
         settingsDailyNewsTheme: 'Daily News theme',
         settingsPreferences: 'Preferences',
+        notificationsEnable: 'Enable notifications',
+        notificationsEnabledLabel: 'Notifications enabled',
+        notificationsBlocked: 'Notifications blocked',
+        notificationsUnavailable: 'Notifications unavailable',
         newsThemeNone: 'None',
         newsThemeMusic: 'Music',
         newsThemePolitics: 'Politics',
@@ -420,6 +439,11 @@
         toastDark: 'Dark mode enabled',
         toastProfileSaved: 'Profile saved',
         toastDailyNewsThemeSaved: 'Daily News set to: {theme}',
+        toastNotificationsEnabled: 'Notifications enabled on this device.',
+        toastNotificationsDenied: 'Allow notifications in the browser to receive reminders.',
+        toastNotificationsUnsupported: 'Push notifications are not available on this device or browser.',
+        toastNotificationsConfigMissing: 'The Firebase web configuration is incomplete.',
+        toastNotificationsSyncFailed: 'Unable to sync notifications right now.',
         toastImportImage: 'Import a JPEG or PNG file',
         toastSpeechUnavailable: 'Voice recognition is not available.',
         chatUnknown: "I didn't understand.",
@@ -535,6 +559,10 @@
         settingsTheme: 'Tema',
         settingsDailyNewsTheme: 'Tema Daily News',
         settingsPreferences: 'Preferencias',
+        notificationsEnable: 'Activar notificaciones',
+        notificationsEnabledLabel: 'Notificaciones activadas',
+        notificationsBlocked: 'Notificaciones bloqueadas',
+        notificationsUnavailable: 'Notificaciones no disponibles',
         newsThemeNone: 'Ninguno',
         newsThemeMusic: 'Musica',
         newsThemePolitics: 'Politica',
@@ -578,6 +606,11 @@
         toastDark: 'Modo oscuro activado',
         toastProfileSaved: 'Perfil guardado',
         toastDailyNewsThemeSaved: 'Daily News ajustado a: {theme}',
+        toastNotificationsEnabled: 'Notificaciones activadas en este dispositivo.',
+        toastNotificationsDenied: 'Autoriza las notificaciones en el navegador para recibir recordatorios.',
+        toastNotificationsUnsupported: 'Las notificaciones push no estan disponibles en este dispositivo o navegador.',
+        toastNotificationsConfigMissing: 'La configuracion web de Firebase esta incompleta.',
+        toastNotificationsSyncFailed: 'No se pueden sincronizar las notificaciones por ahora.',
         toastImportImage: 'Importa un archivo JPEG o PNG',
         toastSpeechUnavailable: 'El reconocimiento de voz no esta disponible.',
         chatUnknown: 'No he entendido.',
@@ -718,6 +751,268 @@ function getNewsThemeLabel(theme) {
   };
 
   return t(themeKeyMap[normalizeDailyNewsTheme(theme)] || 'newsThemeNone');
+}
+
+function getFirebaseWebConfig() {
+  const config = window.MILO_FIREBASE_CONFIG || {};
+  return {
+    apiKey: typeof config.apiKey === 'string' ? config.apiKey.trim() : '',
+    authDomain: typeof config.authDomain === 'string' ? config.authDomain.trim() : '',
+    projectId: typeof config.projectId === 'string' ? config.projectId.trim() : '',
+    storageBucket: typeof config.storageBucket === 'string' ? config.storageBucket.trim() : '',
+    messagingSenderId: typeof config.messagingSenderId === 'string' ? config.messagingSenderId.trim() : '',
+    appId: typeof config.appId === 'string' ? config.appId.trim() : '',
+    vapidKey: typeof config.vapidKey === 'string' ? config.vapidKey.trim() : ''
+  };
+}
+
+function hasCompleteFirebaseWebConfig() {
+  const config = getFirebaseWebConfig();
+  return Boolean(config.apiKey && config.projectId && config.messagingSenderId && config.appId && config.vapidKey);
+}
+
+function isPushNotificationsSupported() {
+  return Boolean(
+    window.firebase
+    && typeof window.firebase.initializeApp === 'function'
+    && typeof window.firebase.messaging === 'function'
+    && 'Notification' in window
+    && 'serviceWorker' in navigator
+  );
+}
+
+function getNotificationsToggleLabelKey() {
+  if (!isPushNotificationsSupported()) return 'notificationsUnavailable';
+  if (Notification.permission === 'denied') return 'notificationsBlocked';
+  if (notificationsEnabled && notificationsToken) return 'notificationsEnabledLabel';
+  return 'notificationsEnable';
+}
+
+function updateNotificationsToggleButton() {
+  if (!notificationsToggleButton) return;
+  notificationsToggleButton.textContent = t(getNotificationsToggleLabelKey());
+  notificationsToggleButton.disabled = !isPushNotificationsSupported() || !hasCompleteFirebaseWebConfig();
+}
+
+function getFirebaseMessagingServiceWorkerUrl() {
+  const fileName = 'firebase-messaging-sw.js';
+  const pathName = window.location.pathname || '/';
+  if (window.location.hostname === 'maximhanser.github.io') {
+    return pathName.startsWith('/milo/') || pathName === '/milo'
+      ? '/milo/' + fileName
+      : '/' + fileName;
+  }
+
+  return './' + fileName;
+}
+
+function getPlanningEventStartTimestamp(event) {
+  const parts = parseTimeParts(event?.time || '');
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(event?.date || '');
+  if (!parts || !dateMatch) return null;
+
+  const startDate = new Date(
+    Number(dateMatch[1]),
+    Number(dateMatch[2]) - 1,
+    Number(dateMatch[3]),
+    parts.hours,
+    parts.minutes,
+    0,
+    0
+  );
+
+  const timestamp = startDate.getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function buildNotificationSyncEvents() {
+  const now = Date.now();
+  return getActivePlanningEvents()
+    .map((event) => {
+      const scheduledAtMs = getPlanningEventStartTimestamp(event);
+      if (!Number.isFinite(scheduledAtMs) || scheduledAtMs <= now) {
+        return null;
+      }
+
+      return {
+        eventId: event.id,
+        title: event.title || t('untitledTask'),
+        description: event.description || '',
+        scheduledAtMs,
+        oneHourBeforeAtMs: scheduledAtMs - (60 * 60 * 1000)
+      };
+    })
+    .filter(Boolean);
+}
+
+async function syncPlanningNotifications() {
+  if (!notificationsEnabled || !notificationsToken) return;
+
+  try {
+    const response = await fetch(getApiUrl('/api/notifications/sync'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: getChatSessionId(),
+        token: notificationsToken,
+        language: currentLanguage,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        userAgent: navigator.userAgent || '',
+        events: buildNotificationSyncEvents()
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Notification sync error:', error);
+  }
+}
+
+function queuePlanningNotificationsSync() {
+  if (!notificationsEnabled || !notificationsToken) return;
+  window.clearTimeout(notificationsSyncTimeout);
+  notificationsSyncTimeout = window.setTimeout(() => {
+    syncPlanningNotifications();
+  }, 350);
+}
+
+async function unregisterPlanningNotifications() {
+  if (!notificationsToken) return;
+
+  try {
+    await fetch(getApiUrl('/api/notifications/unregister'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: getChatSessionId(),
+        token: notificationsToken
+      })
+    });
+  } catch (error) {
+    console.error('Notification unregister error:', error);
+  }
+}
+
+async function ensureFirebaseMessaging() {
+  if (firebaseMessagingInstance) return firebaseMessagingInstance;
+  if (!isPushNotificationsSupported()) return null;
+  if (!hasCompleteFirebaseWebConfig()) return null;
+
+  const config = getFirebaseWebConfig();
+  const appInstance = window.firebase.apps?.length
+    ? window.firebase.app()
+    : window.firebase.initializeApp(config);
+
+  firebaseMessagingInstance = window.firebase.messaging(appInstance);
+  firebaseServiceWorkerRegistration = await navigator.serviceWorker.register(getFirebaseMessagingServiceWorkerUrl());
+  return firebaseMessagingInstance;
+}
+
+async function enablePushNotifications() {
+  if (!isPushNotificationsSupported()) {
+    showToast(t('toastNotificationsUnsupported'));
+    updateNotificationsToggleButton();
+    return;
+  }
+
+  if (!hasCompleteFirebaseWebConfig()) {
+    showToast(t('toastNotificationsConfigMissing'));
+    updateNotificationsToggleButton();
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    showToast(t('toastNotificationsDenied'));
+    updateNotificationsToggleButton();
+    return;
+  }
+
+  const permission = Notification.permission === 'granted'
+    ? 'granted'
+    : await Notification.requestPermission();
+
+  if (permission !== 'granted') {
+    notificationsEnabled = false;
+    notificationsToken = '';
+    updateNotificationsToggleButton();
+    showToast(t('toastNotificationsDenied'));
+    return;
+  }
+
+  try {
+    const messaging = await ensureFirebaseMessaging();
+    if (!messaging) {
+      showToast(t('toastNotificationsConfigMissing'));
+      return;
+    }
+
+    const token = await messaging.getToken({
+      vapidKey: getFirebaseWebConfig().vapidKey,
+      serviceWorkerRegistration: firebaseServiceWorkerRegistration
+    });
+
+    if (!token) {
+      throw new Error('Missing FCM token');
+    }
+
+    notificationsToken = token;
+    notificationsEnabled = true;
+    updateNotificationsToggleButton();
+    await syncPlanningNotifications();
+    showToast(t('toastNotificationsEnabled'));
+  } catch (error) {
+    console.error('Firebase notification init error:', error);
+    notificationsEnabled = false;
+    notificationsToken = '';
+    updateNotificationsToggleButton();
+    showToast(t('toastNotificationsSyncFailed'));
+  }
+}
+
+async function initializePushNotifications() {
+  if (!isPushNotificationsSupported() || !hasCompleteFirebaseWebConfig()) {
+    updateNotificationsToggleButton();
+    return;
+  }
+
+  if (Notification.permission !== 'granted') {
+    updateNotificationsToggleButton();
+    return;
+  }
+
+  try {
+    const messaging = await ensureFirebaseMessaging();
+    if (!messaging) {
+      updateNotificationsToggleButton();
+      return;
+    }
+
+    const token = await messaging.getToken({
+      vapidKey: getFirebaseWebConfig().vapidKey,
+      serviceWorkerRegistration: firebaseServiceWorkerRegistration
+    });
+
+    if (!token) {
+      updateNotificationsToggleButton();
+      return;
+    }
+
+    notificationsToken = token;
+    notificationsEnabled = true;
+    updateNotificationsToggleButton();
+    await syncPlanningNotifications();
+  } catch (error) {
+    console.error('Push notifications bootstrap error:', error);
+    notificationsEnabled = false;
+    notificationsToken = '';
+    updateNotificationsToggleButton();
+  }
 }
 
 function normalizeAppLanguage(value) {
@@ -877,6 +1172,7 @@ function applyTranslations() {
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
   if (dailyNewsThemeSelect) dailyNewsThemeSelect.value = dailyNewsTheme;
+  updateNotificationsToggleButton();
   updateFloatingPrimaryButton();
   renderEducationComposerState();
   setPanelState('idle');
@@ -968,6 +1264,12 @@ if (dailyNewsThemeSelect) {
   });
 }
 
+if (notificationsToggleButton) {
+  notificationsToggleButton.addEventListener('click', async () => {
+    await enablePushNotifications();
+  });
+}
+
 // démarrer en sombre
 applyTheme(false);
 
@@ -983,6 +1285,7 @@ loadPlanningState();
 loadMonthlyPrimaryTasks();
 applyLanguage(initialProfileData.language);
 updateProfileSaveState();
+initializePushNotifications();
 
 avatarPageTriggers.forEach(trigger => {
   trigger.addEventListener('click', showPersonalInfo);
@@ -2381,6 +2684,7 @@ function persistPlanningState() {
     nextEventId: planningState.nextEventId,
     events: planningState.events
   }));
+  queuePlanningNotificationsSync();
 }
 
 function isPlanningEventCompleted(event) {
