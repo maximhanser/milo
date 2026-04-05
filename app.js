@@ -884,6 +884,10 @@ function openPanelSection(section) {
   }
   
   openPanel();
+
+  if (section === 'planning') {
+    scrollPlanningToSelectedEvent();
+  }
 }
 
 function setPanelState(state) {
@@ -2283,14 +2287,26 @@ function renderDayAgenda(events) {
 
   agenda.innerHTML = `<div class="day-agenda-scroll"><div class="day-agenda-grid">${hourRows}<div class="agenda-events-layer">${eventCards}</div>${emptyState}</div></div>`;
 
-  if (planningState.selectedEventId !== null) {
+  scrollPlanningToSelectedEvent();
+
+}
+
+function scrollPlanningToSelectedEvent() {
+  const agenda = document.getElementById('day-agenda-panel');
+  if (!agenda || planningState.view !== 'day' || planningState.selectedEventId === null) return;
+
+  const scrollToEvent = () => {
     const selectedEvent = agenda.querySelector('.agenda-event.active');
     const scrollContainer = agenda.querySelector('.day-agenda-scroll');
-    if (selectedEvent && scrollContainer) {
-      const targetTop = Math.max(0, selectedEvent.offsetTop - 140);
-      scrollContainer.scrollTop = targetTop;
-    }
-  }
+    if (!selectedEvent || !scrollContainer) return;
+
+    const targetTop = Math.max(0, selectedEvent.offsetTop - 140);
+    scrollContainer.scrollTop = targetTop;
+  };
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(scrollToEvent);
+  });
 }
 
 function closeTaskModal() {
