@@ -79,7 +79,7 @@
     const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
     const settingsMenuClose = document.getElementById('settings-menu-close');
     const themeToggle = document.getElementById('theme-toggle');
-    const dailyNewsThemeSelect = document.getElementById('daily-news-theme');
+    const homeDailyNewsList = document.getElementById('home-daily-news-list');
     const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
     const avatarImages = document.querySelectorAll('.profile-avatar-image');
     const profileFirstNameInput = document.getElementById('profile-first-name');
@@ -115,6 +115,20 @@
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
     let dailyNewsTheme = 'none';
+    let dailyNewsState = {
+      cacheKey: '',
+      entry: null,
+      status: 'idle',
+      source: 'none'
+    };
+    let dailyNewsDragState = {
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      deltaX: 0,
+      axis: null
+    };
 
     const translations = {
       fr: {
@@ -128,7 +142,10 @@
         homeMonthlyPrimary: 'Tâches principales mensuelles',
         homeDailyNewsEmptyTitle: 'Choisis un thème d\'actualité',
         homeDailyNewsEmptySub: 'Ouvre Paramètres pour sélectionner un thème et afficher une news quotidienne sur l\'accueil.',
-        homeDailyNewsBadge: 'Sélection quotidienne',
+        homeDailyNewsBadge: 'News web',
+        homeDailyNewsFallbackBadge: 'Erreur web · local',
+        homeDailyNewsLoadingTitle: 'Chargement des news du jour',
+        homeDailyNewsLoadingSub: 'Milo prépare une synthèse depuis le web pour ce thème.',
         homeEmptyToday: 'Aucune tâche prévue aujourd\'hui.',
         homeEmptyTomorrow: 'Aucune tâche prévue demain.',
         homeEmptyMonthlyPrimary: 'Aucune tâche principale pour ce mois.',
@@ -223,7 +240,7 @@
         newsThemeMusic: 'Musique',
         newsThemePolitics: 'Politique',
         newsThemeEconomy: 'Économie',
-        newsThemeArt: 'Art',
+        newsThemeArt: 'Sport',
         chatEmpty: 'Aucun échange pour le moment',
         chatIdle: 'Écris un message ou parle à Milo',
         chatListening: 'J\'écoute…',
@@ -286,7 +303,10 @@
         homeMonthlyPrimary: 'Main monthly tasks',
         homeDailyNewsEmptyTitle: 'Choose a news theme',
         homeDailyNewsEmptySub: 'Open Settings to select a theme and show a daily news card on the home page.',
-        homeDailyNewsBadge: 'Daily selection',
+        homeDailyNewsBadge: 'Web news',
+        homeDailyNewsFallbackBadge: 'Web error · local',
+        homeDailyNewsLoadingTitle: 'Loading today\'s news',
+        homeDailyNewsLoadingSub: 'Milo is preparing a web summary for this theme.',
         homeEmptyToday: 'No task scheduled today.',
         homeEmptyTomorrow: 'No task scheduled tomorrow.',
         homeEmptyMonthlyPrimary: 'No main task for this month.',
@@ -381,7 +401,7 @@
         newsThemeMusic: 'Music',
         newsThemePolitics: 'Politics',
         newsThemeEconomy: 'Economy',
-        newsThemeArt: 'Art',
+        newsThemeArt: 'Sport',
         chatEmpty: 'No conversation yet',
         chatIdle: 'Type a message or speak to Milo',
         chatListening: 'I\'m listening…',
@@ -444,7 +464,10 @@
         homeMonthlyPrimary: 'Tareas principales mensuales',
         homeDailyNewsEmptyTitle: 'Elige un tema de actualidad',
         homeDailyNewsEmptySub: 'Abre Ajustes para seleccionar un tema y mostrar una noticia diaria en la pantalla de inicio.',
-        homeDailyNewsBadge: 'Seleccion diaria',
+        homeDailyNewsBadge: 'News web',
+        homeDailyNewsFallbackBadge: 'Error web · local',
+        homeDailyNewsLoadingTitle: 'Cargando noticias del dia',
+        homeDailyNewsLoadingSub: 'Milo esta preparando un resumen desde la web para este tema.',
         homeEmptyToday: 'No hay tareas previstas hoy.',
         homeEmptyTomorrow: 'No hay tareas previstas manana.',
         homeEmptyMonthlyPrimary: 'No hay tareas principales para este mes.',
@@ -539,7 +562,7 @@
         newsThemeMusic: 'Musica',
         newsThemePolitics: 'Politica',
         newsThemeEconomy: 'Economia',
-        newsThemeArt: 'Arte',
+        newsThemeArt: 'Deporte',
         chatEmpty: 'Todavia no hay conversacion',
         chatIdle: 'Escribe un mensaje o habla con Milo',
         chatListening: 'Te escucho...',
@@ -593,7 +616,7 @@
       }
     };
 
-const DAILY_NEWS_THEMES = ['none', 'music', 'politics', 'economy', 'art'];
+const DAILY_NEWS_THEMES = ['economy', 'sport', 'politics', 'music'];
 
 const dailyNewsCatalog = {
   music: {
@@ -647,33 +670,33 @@ const dailyNewsCatalog = {
       { title: 'El pago fraccionado sigue creciendo', sub: 'Las marcas lo usan para facilitar compras, sobre todo en movil.' }
     ]
   },
-  art: {
+  sport: {
     fr: [
-      { title: 'Les expositions immersives attirent un nouveau public', sub: 'Les formats visuels et sonores prolongent la visite au-delà du cadre classique.' },
-      { title: 'Les ateliers collectifs reviennent en force', sub: 'Les lieux culturels misent sur des expériences participatives plus régulières.' },
-      { title: 'L\'illustration numérique se diffuse dans les galeries', sub: 'Les œuvres hybrides entre écran et impression prennent plus de place.' }
+      { title: 'Les sports d\'endurance attirent un public plus large', sub: 'Les courses locales et formats accessibles séduisent autant les débutants que les pratiquants réguliers.' },
+      { title: 'Les clubs amateurs investissent davantage le numérique', sub: 'Réservations, suivis de performance et communication passent de plus en plus par des outils simples sur mobile.' },
+      { title: 'Les événements multisports gagnent en visibilité', sub: 'Les formats mêlant plusieurs disciplines progressent grâce à leur dimension conviviale et familiale.' }
     ],
     en: [
-      { title: 'Immersive exhibitions are drawing new audiences', sub: 'Visual and sound-driven formats extend the visit beyond the classic gallery path.' },
-      { title: 'Collective workshops are making a comeback', sub: 'Cultural venues are investing in more regular participatory experiences.' },
-      { title: 'Digital illustration is spreading in galleries', sub: 'Hybrid works between screen and print are taking more space.' }
+      { title: 'Endurance sports are drawing wider audiences', sub: 'Local races and accessible formats are attracting both beginners and regular participants.' },
+      { title: 'Amateur clubs are going more digital', sub: 'Bookings, performance tracking, and communication increasingly rely on simple mobile tools.' },
+      { title: 'Multi-sport events are gaining visibility', sub: 'Formats mixing several disciplines are growing thanks to their social and family-friendly appeal.' }
     ],
     es: [
-      { title: 'Las exposiciones inmersivas atraen a nuevo publico', sub: 'Los formatos visuales y sonoros amplian la experiencia mas alla de la visita clasica.' },
-      { title: 'Los talleres colectivos vuelven con fuerza', sub: 'Los espacios culturales apuestan por experiencias participativas mas frecuentes.' },
-      { title: 'La ilustracion digital gana espacio en galerias', sub: 'Las obras hibridas entre pantalla e impresion ocupan cada vez mas lugar.' }
+      { title: 'Los deportes de resistencia atraen a mas publico', sub: 'Las carreras locales y los formatos accesibles seducen tanto a principiantes como a practicantes habituales.' },
+      { title: 'Los clubes amateurs se digitalizan mas', sub: 'Reservas, seguimiento del rendimiento y comunicacion pasan cada vez mas por herramientas moviles sencillas.' },
+      { title: 'Los eventos multideporte ganan visibilidad', sub: 'Los formatos que mezclan varias disciplinas crecen por su aspecto social y familiar.' }
     ]
   }
 };
 
 function normalizeDailyNewsTheme(value) {
   const normalizedValue = String(value || '').trim().toLowerCase();
-  return DAILY_NEWS_THEMES.includes(normalizedValue) ? normalizedValue : 'none';
+  return DAILY_NEWS_THEMES.includes(normalizedValue) ? normalizedValue : 'economy';
 }
 
 function getDefaultPreferences() {
   return {
-    dailyNewsTheme: 'none'
+    dailyNewsTheme: 'economy'
   };
 }
 
@@ -703,9 +726,6 @@ function persistPreferences() {
 
 function applyPreferences(preferences) {
   dailyNewsTheme = normalizeDailyNewsTheme(preferences?.dailyNewsTheme);
-  if (dailyNewsThemeSelect) {
-    dailyNewsThemeSelect.value = dailyNewsTheme;
-  }
 }
 
 function getNewsThemeLabel(theme) {
@@ -714,10 +734,221 @@ function getNewsThemeLabel(theme) {
     music: 'newsThemeMusic',
     politics: 'newsThemePolitics',
     economy: 'newsThemeEconomy',
-    art: 'newsThemeArt'
+    sport: 'newsThemeArt'
   };
 
   return t(themeKeyMap[normalizeDailyNewsTheme(theme)] || 'newsThemeNone');
+}
+
+function getDailyNewsThemeIndex(theme = dailyNewsTheme) {
+  const normalizedTheme = normalizeDailyNewsTheme(theme);
+  const currentIndex = DAILY_NEWS_THEMES.indexOf(normalizedTheme);
+  return currentIndex >= 0 ? currentIndex : 0;
+}
+
+function getAdjacentDailyNewsTheme(direction = 1) {
+  const currentIndex = getDailyNewsThemeIndex();
+  const nextIndex = (currentIndex + direction + DAILY_NEWS_THEMES.length) % DAILY_NEWS_THEMES.length;
+  return DAILY_NEWS_THEMES[nextIndex];
+}
+
+function animateDailyNewsSlide(direction = 1) {
+  if (!homeDailyNewsList || typeof homeDailyNewsList.animate !== 'function') return;
+
+  const offset = direction > 0 ? 28 : -28;
+  homeDailyNewsList.animate([
+    { transform: `translateX(${offset}px)`, opacity: 0.55 },
+    { transform: 'translateX(0)', opacity: 1 }
+  ], {
+    duration: 220,
+    easing: 'ease-out'
+  });
+}
+
+function cycleDailyNewsTheme(direction = 1) {
+  dailyNewsTheme = getAdjacentDailyNewsTheme(direction);
+  persistPreferences();
+  renderHomePage();
+  animateDailyNewsSlide(direction);
+}
+
+function resetDailyNewsDragState(animateBack = true) {
+  if (homeDailyNewsList) {
+    if (animateBack) {
+      homeDailyNewsList.style.transition = 'transform 180ms ease';
+    }
+    homeDailyNewsList.style.transform = '';
+    if (animateBack) {
+      window.setTimeout(() => {
+        if (homeDailyNewsList) {
+          homeDailyNewsList.style.transition = '';
+        }
+      }, 180);
+    }
+  }
+
+  dailyNewsDragState = {
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    deltaX: 0,
+    axis: null
+  };
+}
+
+function handleDailyNewsPointerDown(event) {
+  if (!homeDailyNewsList) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+  dailyNewsDragState = {
+    active: true,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    deltaX: 0,
+    axis: null
+  };
+
+  if (typeof homeDailyNewsList.setPointerCapture === 'function') {
+    homeDailyNewsList.setPointerCapture(event.pointerId);
+  }
+}
+
+function handleDailyNewsPointerMove(event) {
+  if (!homeDailyNewsList || !dailyNewsDragState.active || event.pointerId !== dailyNewsDragState.pointerId) return;
+
+  const deltaX = event.clientX - dailyNewsDragState.startX;
+  const deltaY = event.clientY - dailyNewsDragState.startY;
+
+  if (!dailyNewsDragState.axis) {
+    if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return;
+    dailyNewsDragState.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+  }
+
+  if (dailyNewsDragState.axis !== 'x') return;
+
+  event.preventDefault();
+  dailyNewsDragState.deltaX = deltaX;
+  const clampedDeltaX = Math.max(-72, Math.min(72, deltaX));
+  homeDailyNewsList.style.transition = 'none';
+  homeDailyNewsList.style.transform = `translateX(${clampedDeltaX}px)`;
+}
+
+function handleDailyNewsPointerEnd(event) {
+  if (!homeDailyNewsList || !dailyNewsDragState.active || event.pointerId !== dailyNewsDragState.pointerId) return;
+
+  const shouldNavigate = dailyNewsDragState.axis === 'x' && Math.abs(dailyNewsDragState.deltaX) > 44;
+  const direction = dailyNewsDragState.deltaX < 0 ? 1 : -1;
+
+  resetDailyNewsDragState(true);
+
+  if (shouldNavigate) {
+    cycleDailyNewsTheme(direction);
+  }
+}
+
+function getDailyNewsDateKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getDailyNewsRequestKey(theme, language = currentLanguage) {
+  return `${getDailyNewsDateKey()}::${normalizeDailyNewsTheme(theme)}::${normalizeAppLanguage(language)}`;
+}
+
+function getFallbackDailyNewsEntry(theme, language = currentLanguage) {
+  const normalizedTheme = normalizeDailyNewsTheme(theme);
+  if (normalizedTheme === 'none') return null;
+
+  const localizedEntries = dailyNewsCatalog[normalizedTheme]?.[language]
+    || dailyNewsCatalog[normalizedTheme]?.fr
+    || [];
+
+  if (!localizedEntries.length) return null;
+
+  const now = new Date();
+  const daySeed = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  return localizedEntries[daySeed % localizedEntries.length];
+}
+
+function normalizeDailyNewsServerEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+
+  const title = typeof entry.title === 'string' ? entry.title.trim().slice(0, 140) : '';
+  const sub = typeof entry.sub === 'string' ? entry.sub.trim().slice(0, 320) : '';
+
+  if (!title || !sub) return null;
+  return { title, sub };
+}
+
+async function loadDailyNews({ force = false } = {}) {
+  const normalizedTheme = normalizeDailyNewsTheme(dailyNewsTheme);
+  const requestKey = getDailyNewsRequestKey(normalizedTheme, currentLanguage);
+
+  if (normalizedTheme === 'none') {
+    dailyNewsState = {
+      cacheKey: requestKey,
+      entry: null,
+      status: 'idle',
+      source: 'none'
+    };
+    renderHomePage();
+    return;
+  }
+
+  if (!force && dailyNewsState.cacheKey === requestKey && ['loading', 'loaded'].includes(dailyNewsState.status)) {
+    return;
+  }
+
+  dailyNewsState = {
+    cacheKey: requestKey,
+    entry: dailyNewsState.cacheKey === requestKey ? dailyNewsState.entry : null,
+    status: 'loading',
+    source: 'none'
+  };
+  renderHomePage();
+
+  try {
+    const response = await fetch(`${getApiUrl('/api/daily-news')}?theme=${encodeURIComponent(normalizedTheme)}&language=${encodeURIComponent(currentLanguage)}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const entry = normalizeDailyNewsServerEntry(payload?.entry);
+    if (!entry) {
+      throw new Error('Missing daily news entry');
+    }
+
+    dailyNewsState = {
+      cacheKey: requestKey,
+      entry,
+      status: 'loaded',
+      source: 'remote'
+    };
+  } catch (error) {
+    console.error('Daily news fetch error:', error);
+    dailyNewsState = {
+      cacheKey: requestKey,
+      entry: getFallbackDailyNewsEntry(normalizedTheme, currentLanguage),
+      status: 'loaded',
+      source: 'error'
+    };
+  }
+
+  renderHomePage();
+}
+
+function maybeRefreshDailyNews() {
+  const normalizedTheme = normalizeDailyNewsTheme(dailyNewsTheme);
+  if (normalizedTheme === 'none') return;
+
+  const requestKey = getDailyNewsRequestKey(normalizedTheme, currentLanguage);
+  if (dailyNewsState.cacheKey === requestKey && ['loading', 'loaded'].includes(dailyNewsState.status)) {
+    return;
+  }
+
+  loadDailyNews();
 }
 
 function normalizeAppLanguage(value) {
@@ -828,12 +1059,6 @@ function applyTranslations() {
   setText('education-clear-files-btn', 'educationClearFiles');
   setText('settings-menu-title', 'settingsTitle');
   setText('theme-label', 'settingsTheme');
-  setText('settings-daily-news-label', 'settingsDailyNewsTheme');
-  setText('daily-news-option-none', 'newsThemeNone');
-  setText('daily-news-option-music', 'newsThemeMusic');
-  setText('daily-news-option-politics', 'newsThemePolitics');
-  setText('daily-news-option-economy', 'newsThemeEconomy');
-  setText('daily-news-option-art', 'newsThemeArt');
   setText('settings-preferences-item', 'settingsPreferences');
   setText('chat-empty-initial', 'chatEmpty');
   setText('education-chat-empty', 'educationChatEmpty');
@@ -876,7 +1101,6 @@ function applyTranslations() {
   const avatarPreview = document.getElementById('profile-photo-preview');
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
-  if (dailyNewsThemeSelect) dailyNewsThemeSelect.value = dailyNewsTheme;
   updateFloatingPrimaryButton();
   renderEducationComposerState();
   setPanelState('idle');
@@ -959,12 +1183,15 @@ if (themeToggle) {
   });
 }
 
-if (dailyNewsThemeSelect) {
-  dailyNewsThemeSelect.addEventListener('change', (event) => {
-    dailyNewsTheme = normalizeDailyNewsTheme(event.target.value);
-    persistPreferences();
-    renderHomePage();
-    showToast(t('toastDailyNewsThemeSaved', { theme: getNewsThemeLabel(dailyNewsTheme) }));
+if (homeDailyNewsList) {
+  homeDailyNewsList.addEventListener('pointerdown', handleDailyNewsPointerDown);
+  homeDailyNewsList.addEventListener('pointermove', handleDailyNewsPointerMove);
+  homeDailyNewsList.addEventListener('pointerup', handleDailyNewsPointerEnd);
+  homeDailyNewsList.addEventListener('pointercancel', handleDailyNewsPointerEnd);
+  homeDailyNewsList.addEventListener('lostpointercapture', () => {
+    if (dailyNewsDragState.active) {
+      resetDailyNewsDragState(true);
+    }
   });
 }
 
@@ -2498,27 +2725,24 @@ function renderMonthlyPrimaryCards(tasks = []) {
   return tasks.map((task) => (`<button type="button" class="card home-monthly-card" data-home-month-key="${escapeHtml(task.monthKey)}" style="text-align:left;"><div class="card-dot" style="background:var(--accent)"></div><div class="card-body"><div class="card-title">${escapeHtml(task.title)}</div><div class="card-sub">${escapeHtml(formatMonthLabelFromKey(task.monthKey))}</div><div class="home-monthly-meta"><span class="badge badge-purple">${escapeHtml(t('homeMonthlyPrimaryBadge', { count: task.reminderCount }))}</span><span class="home-monthly-subtle">${escapeHtml(t('homeMonthBadge'))}</span></div></div></button>`)).join('');
 }
 
-function getDailyNewsEntry(theme, language = currentLanguage) {
-  const normalizedTheme = normalizeDailyNewsTheme(theme);
-  if (normalizedTheme === 'none') return null;
-
-  const localizedEntries = dailyNewsCatalog[normalizedTheme]?.[language]
-    || dailyNewsCatalog[normalizedTheme]?.fr
-    || [];
-
-  if (!localizedEntries.length) return null;
-
-  const now = new Date();
-  const daySeed = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
-  return localizedEntries[daySeed % localizedEntries.length];
-}
-
 function renderDailyNewsEmptyState() {
   return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(t('homeDailyNewsEmptyTitle'))}</div><div class="card-sub">${escapeHtml(t('homeDailyNewsEmptySub'))}</div></div></div>`;
 }
 
+function renderDailyNewsLoadingState() {
+  return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(t('homeDailyNewsLoadingTitle'))}</div><div class="card-sub">${escapeHtml(t('homeDailyNewsLoadingSub'))}</div></div></div>`;
+}
+
 function renderDailyNewsCard() {
-  const entry = getDailyNewsEntry(dailyNewsTheme);
+  const requestKey = getDailyNewsRequestKey(dailyNewsTheme, currentLanguage);
+  const entry = dailyNewsState.cacheKey === requestKey && dailyNewsState.entry
+    ? dailyNewsState.entry
+    : getFallbackDailyNewsEntry(dailyNewsTheme, currentLanguage);
+
+  if (normalizeDailyNewsTheme(dailyNewsTheme) !== 'none' && dailyNewsState.cacheKey === requestKey && dailyNewsState.status === 'loading' && !entry) {
+    return renderDailyNewsLoadingState();
+  }
+
   if (!entry) return renderDailyNewsEmptyState();
 
   const formattedDate = new Intl.DateTimeFormat(getCurrentLocale(), {
@@ -2526,7 +2750,13 @@ function renderDailyNewsCard() {
     month: 'short'
   }).format(new Date());
 
-  return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(entry.title)}</div><div class="card-sub">${escapeHtml(entry.sub)}</div><div class="home-news-meta"><span class="badge badge-purple">${escapeHtml(t('homeDailyNewsBadge'))}</span><span class="home-monthly-subtle">${escapeHtml(getNewsThemeLabel(dailyNewsTheme))} · ${escapeHtml(formattedDate)}</span></div></div></div>`;
+  const isRemoteNews = dailyNewsState.cacheKey === requestKey && dailyNewsState.source === 'remote';
+  const badgeLabel = isRemoteNews
+    ? t('homeDailyNewsBadge')
+    : t('homeDailyNewsFallbackBadge');
+  const badgeClass = isRemoteNews ? 'badge-purple' : 'badge-amber';
+
+  return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(entry.title)}</div><div class="card-sub">${escapeHtml(entry.sub)}</div><div class="home-news-meta"><span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span><span class="home-monthly-subtle">${escapeHtml(getNewsThemeLabel(dailyNewsTheme))} · ${escapeHtml(formattedDate)}</span></div></div></div>`;
 }
 
 function renderHomePage() {
@@ -2555,6 +2785,7 @@ function renderHomePage() {
   todayList.innerHTML = todayEvents.length ? renderHomeEventCards(todayEvents) : renderHomeEmptyState(t('homeEmptyToday'));
   tomorrowList.innerHTML = tomorrowEvents.length ? renderHomeEventCards(tomorrowEvents) : renderHomeEmptyState(t('homeEmptyTomorrow'));
   monthlyList.innerHTML = monthTasks.length ? renderMonthlyPrimaryCards(monthTasks) : renderHomeEmptyState(t('homeEmptyMonthlyPrimary'));
+  maybeRefreshDailyNews();
 }
 
 function openPlanningMonth(monthKey) {

@@ -15,10 +15,443 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 const sessionMemoryStore = new Map();
+const dailyNewsCache = new Map();
+const FOOTBALL_STANDINGS_SOURCES = [
+  {
+    id: "serie-a",
+    url: "https://www.footmercato.net/italie/serie-a/classement?partial=1&type=total",
+    siteName: "Foot Mercato",
+    leagueLabels: {
+      fr: "Serie A",
+      en: "Serie A",
+      es: "Serie A"
+    },
+    keywords: ["serie a", "seriea", "italie"]
+  }
+];
+
+const DAILY_NEWS_THEMES = ["none", "music", "politics", "economy", "sport"];
+const DAILY_NEWS_QUERIES = {
+  music: {
+    fr: "musique actualite du jour",
+    en: "music news today",
+    es: "musica noticias del dia"
+  },
+  politics: {
+    fr: "politique actualite du jour",
+    en: "politics news today",
+    es: "politica noticias del dia"
+  },
+  economy: {
+    fr: "economie actualite du jour",
+    en: "economy news today",
+    es: "economia noticias del dia"
+  },
+  sport: {
+    fr: "sport actualite du jour",
+    en: "sports news today",
+    es: "deporte noticias del dia"
+  }
+};
+const DAILY_NEWS_LOCALES = {
+  fr: { hl: "fr", gl: "FR", ceid: "FR:fr" },
+  en: { hl: "en-US", gl: "US", ceid: "US:en" },
+  es: { hl: "es", gl: "ES", ceid: "ES:es" }
+};
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, service: "milo-backend" });
 });
+
+function sanitizeDailyNewsTheme(theme) {
+  return DAILY_NEWS_THEMES.includes(theme) ? theme : "none";
+}
+
+function sanitizeDailyNewsLanguage(language) {
+  return ["fr", "en", "es"].includes(language) ? language : "fr";
+}
+
+function getDailyNewsDateKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getDailyNewsCacheKey(theme, language) {
+  return `${getDailyNewsDateKey()}::${sanitizeDailyNewsTheme(theme)}::${sanitizeDailyNewsLanguage(language)}`;
+}
+
+function decodeHtmlEntities(value = "") {
+  return String(value)
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&#x2F;/gi, "/")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+function stripHtml(value = "") {
+  return decodeHtmlEntities(String(value).replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+function sanitizeFetchedWebText(html = "") {
+  const withoutBlockedTags = String(html)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ");
+
+  return stripHtml(withoutBlockedTags);
+}
+
+function extractHtmlTitle(html = "") {
+  const match = String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return match ? stripHtml(match[1]).slice(0, 160) : "";
+}
+
+function extractHtmlTableRows(html = "") {
+  const rows = [...String(html).matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)]
+    .map((match) => {
+      const cells = [...String(match[1]).matchAll(/<(?:th|td)\b[^>]*>([\s\S]*?)<\/(?:th|td)>/gi)]
+        .map((cellMatch) => stripHtml(cellMatch[1]))
+        .filter(Boolean);
+
+      return cells.length ? cells.join(" | ") : "";
+    })
+    .filter(Boolean);
+
+  return rows.slice(0, 20);
+}
+
+function normalizeFetchableUrl(url) {
+  const rawUrl = typeof url === "string" ? url.trim() : "";
+  if (!rawUrl) return "";
+
+  try {
+    const parsedUrl = new URL(rawUrl);
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return "";
+    }
+    return parsedUrl.toString();
+  } catch {
+    return "";
+  }
+}
+
+async function fetchWebpage(url) {
+  const normalizedUrl = normalizeFetchableUrl(url);
+  if (!normalizedUrl) {
+    return { ok: false, error: "Invalid URL" };
+  }
+
+  try {
+    const html = await fetchTextWithTimeout(normalizedUrl, {
+      headers: {
+        "User-Agent": "Milo/1.0",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"
+      },
+      timeoutMs: 10000
+    });
+    const title = extractHtmlTitle(html);
+    const text = sanitizeFetchedWebText(html).slice(0, 12000);
+    const tableRows = extractHtmlTableRows(html);
+
+    return {
+      ok: Boolean(title || text || tableRows.length),
+      url: normalizedUrl,
+      title,
+      text,
+      tableRows,
+      excerpt: text.slice(0, 1500)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      url: normalizedUrl,
+      error: typeof error?.message === "string" ? error.message : "Fetch failed"
+    };
+  }
+}
+
+function detectFootballStandingsSource(message = "") {
+  const normalizedMessage = normalizeText(typeof message === "string" ? message : "");
+  if (!normalizedMessage) return null;
+
+  const standingsKeywords = ["classement", "standing", "standings", "ranking", "table"];
+  if (!standingsKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+    return null;
+  }
+
+  return FOOTBALL_STANDINGS_SOURCES.find((source) => (
+    source.keywords.some(keyword => normalizedMessage.includes(keyword))
+      || normalizedMessage.includes(normalizeText(source.siteName))
+  )) || null;
+}
+
+function parseFootballStandingsRows(html = "") {
+  return extractHtmlTableRows(html)
+    .map((row) => row.split("|").map(cell => cell.trim()).filter(Boolean))
+    .map((cells) => {
+      const rank = Number.parseInt(cells[0], 10);
+      const points = Number.parseInt(cells[2], 10);
+      const played = Number.parseInt(cells[3], 10);
+      const won = Number.parseInt(cells[5], 10);
+      const drawn = Number.parseInt(cells[6], 10);
+      const lost = Number.parseInt(cells[7], 10);
+      const goalsFor = Number.parseInt(cells[8], 10);
+      const goalsAgainst = Number.parseInt(cells[9], 10);
+
+      if (!Number.isInteger(rank) || !cells[1] || !Number.isInteger(points) || !Number.isInteger(played)) {
+        return null;
+      }
+
+      return {
+        rank,
+        team: cells[1],
+        points,
+        played,
+        goalDifference: cells[4] || "0",
+        won: Number.isInteger(won) ? won : null,
+        drawn: Number.isInteger(drawn) ? drawn : null,
+        lost: Number.isInteger(lost) ? lost : null,
+        goalsFor: Number.isInteger(goalsFor) ? goalsFor : null,
+        goalsAgainst: Number.isInteger(goalsAgainst) ? goalsAgainst : null
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.rank - right.rank);
+}
+
+function buildFootballStandingsReply(source, rows, language = "fr") {
+  const safeLanguage = sanitizeDailyNewsLanguage(language);
+  const leagueLabel = source.leagueLabels[safeLanguage] || source.leagueLabels.fr;
+  const topRows = rows.slice(0, 5);
+  const leader = topRows[0];
+  const runnerUp = topRows[1];
+  const third = topRows[2];
+
+  if (!leader) return null;
+
+  const podiumText = topRows
+    .slice(0, 3)
+    .map((entry) => `${entry.rank}. ${entry.team} (${entry.points} pts)`)
+    .join(", ");
+  const topFiveText = topRows
+    .map((entry) => `${entry.rank}. ${entry.team} ${entry.points} pts`)
+    .join(" · ");
+  const gapText = runnerUp ? leader.points - runnerUp.points : 0;
+
+  if (safeLanguage === "en") {
+    return [
+      `According to ${source.siteName}, ${leader.team} lead ${leagueLabel} with ${leader.points} points from ${leader.played} matches.` ,
+      runnerUp && third ? `The podium is ${podiumText}, with a ${gapText}-point gap between first and second.` : "",
+      `Current top 5: ${topFiveText}.`,
+      `Source read directly from ${source.siteName}: ${source.url}`
+    ].filter(Boolean).join(" ");
+  }
+
+  if (safeLanguage === "es") {
+    return [
+      `Segun ${source.siteName}, ${leader.team} lidera la ${leagueLabel} con ${leader.points} puntos en ${leader.played} partidos.`,
+      runnerUp && third ? `El podio actual es ${podiumText}, con ${gapText} puntos de diferencia entre el primero y el segundo.` : "",
+      `Top 5 actual: ${topFiveText}.`,
+      `Fuente leida directamente en ${source.siteName}: ${source.url}`
+    ].filter(Boolean).join(" ");
+  }
+
+  return [
+    `Selon ${source.siteName}, ${leader.team} est leader de ${leagueLabel} avec ${leader.points} points en ${leader.played} matchs.`,
+    runnerUp && third ? `Le podium actuel est ${podiumText}, avec ${gapText} points d'avance entre le premier et le deuxième.` : "",
+    `Top 5 actuel: ${topFiveText}.`,
+    `Source lue directement sur ${source.siteName} : ${source.url}`
+  ].filter(Boolean).join(" ");
+}
+
+async function maybeBuildDirectWebFallback({ message, language }) {
+  const source = detectFootballStandingsSource(message);
+  if (!source) {
+    return null;
+  }
+
+  try {
+    const html = await fetchTextWithTimeout(source.url, {
+      headers: {
+        "User-Agent": "Milo/1.0",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"
+      },
+      timeoutMs: 10000
+    });
+    const rows = parseFootballStandingsRows(html);
+    const reply = buildFootballStandingsReply(source, rows, language);
+
+    if (!reply) {
+      return null;
+    }
+
+    return {
+      reply,
+      source: source.siteName,
+      mode: "direct-web-fallback"
+    };
+  } catch (error) {
+    console.error("Direct web fallback error:", error);
+    return null;
+  }
+}
+
+function extractRssTag(content, tagName) {
+  const match = content.match(new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i"));
+  return match ? stripHtml(match[1]) : "";
+}
+
+function parseNewsRss(xml = "") {
+  return [...String(xml).matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)]
+    .map((match) => {
+      const itemContent = match[1] || "";
+      const title = extractRssTag(itemContent, "title").replace(/\s+-\s+[^-]+$/, "").trim();
+      const description = extractRssTag(itemContent, "description");
+      const link = extractRssTag(itemContent, "link");
+      const pubDate = extractRssTag(itemContent, "pubDate");
+
+      return {
+        title,
+        description,
+        link,
+        pubDate
+      };
+    })
+    .filter((item) => item.title && item.link)
+    .slice(0, 6);
+}
+
+async function fetchTextWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 8000);
+
+  try {
+    const response = await fetch(url, {
+      headers: options.headers,
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return await response.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function buildGoogleNewsRssUrl(theme, language) {
+  const safeTheme = sanitizeDailyNewsTheme(theme);
+  const safeLanguage = sanitizeDailyNewsLanguage(language);
+  const locale = DAILY_NEWS_LOCALES[safeLanguage];
+  const query = DAILY_NEWS_QUERIES[safeTheme]?.[safeLanguage] || DAILY_NEWS_QUERIES[safeTheme]?.fr || "actualite du jour";
+
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} when:1d`)}&hl=${encodeURIComponent(locale.hl)}&gl=${encodeURIComponent(locale.gl)}&ceid=${encodeURIComponent(locale.ceid)}`;
+}
+
+async function fetchDailyNewsCandidates(theme, language) {
+  const safeTheme = sanitizeDailyNewsTheme(theme);
+  if (safeTheme === "none") return [];
+
+  const rssUrl = buildGoogleNewsRssUrl(safeTheme, language);
+  const xml = await fetchTextWithTimeout(rssUrl, {
+    headers: {
+      "User-Agent": "Milo/1.0"
+    }
+  });
+
+  return parseNewsRss(xml);
+}
+
+function getDailyNewsThemeLabel(theme, language) {
+  const safeLanguage = sanitizeDailyNewsLanguage(language);
+  const labelMap = {
+    fr: { music: "musique", politics: "politique", economy: "economie", sport: "sport" },
+    en: { music: "music", politics: "politics", economy: "economy", sport: "sport" },
+    es: { music: "musica", politics: "politica", economy: "economia", sport: "deporte" }
+  };
+
+  return labelMap[safeLanguage]?.[theme] || labelMap.fr[theme] || theme;
+}
+
+function buildDailyNewsFallbackEntry(theme, language, articles = []) {
+  const safeLanguage = sanitizeDailyNewsLanguage(language);
+  const firstArticle = articles[0];
+  if (!firstArticle) return null;
+
+  if (safeLanguage === "en") {
+    return {
+      title: `Today in ${getDailyNewsThemeLabel(theme, language)}`,
+      sub: firstArticle.description || firstArticle.title
+    };
+  }
+
+  if (safeLanguage === "es") {
+    return {
+      title: `Hoy en ${getDailyNewsThemeLabel(theme, language)}`,
+      sub: firstArticle.description || firstArticle.title
+    };
+  }
+
+  return {
+    title: `A retenir en ${getDailyNewsThemeLabel(theme, language)}`,
+    sub: firstArticle.description || firstArticle.title
+  };
+}
+
+function normalizeDailyNewsModelEntry(payload) {
+  if (!payload || typeof payload !== "object") return null;
+
+  const title = typeof payload.title === "string" ? payload.title.trim().slice(0, 140) : "";
+  const sub = typeof payload.sub === "string" ? payload.sub.trim().slice(0, 320) : "";
+
+  if (!title || !sub) return null;
+  return { title, sub };
+}
+
+async function generateDailyNewsSummary({ client, model, theme, language, articles }) {
+  const safeLanguage = sanitizeDailyNewsLanguage(language);
+  const themeLabel = getDailyNewsThemeLabel(theme, safeLanguage);
+  const serializedArticles = articles.map((article, index) => ([
+    `${index + 1}. Titre: ${article.title}`,
+    `Resume: ${article.description || ""}`,
+    `Date: ${article.pubDate || ""}`,
+    `Lien: ${article.link}`
+  ].join("\n"))).join("\n\n");
+
+  const systemPrompt = safeLanguage === "en"
+    ? "You write a concise daily news card for a personal dashboard. Return strict JSON with keys title and sub only. Be factual and use only the provided articles."
+    : safeLanguage === "es"
+      ? "Escribes una tarjeta breve de noticias diarias para un panel personal. Devuelve un JSON estricto con solo las claves title y sub. Se factual y usa solo los articulos proporcionados."
+      : "Tu rediges une carte de news quotidienne concise pour un tableau de bord personnel. Retourne un JSON strict avec uniquement les cles title et sub. Sois factuel et utilise seulement les articles fournis.";
+
+  const userPrompt = safeLanguage === "en"
+    ? `Theme: ${themeLabel}. Summarize the main signal from these recent articles into one short dashboard card.\n\n${serializedArticles}`
+    : safeLanguage === "es"
+      ? `Tema: ${themeLabel}. Resume la idea principal de estos articulos recientes en una sola tarjeta breve de panel.\n\n${serializedArticles}`
+      : `Theme: ${themeLabel}. Resume l'idee principale de ces articles recents dans une seule carte breve de tableau de bord.\n\n${serializedArticles}`;
+
+  const response = await createChatCompletionWithRetry(client, {
+    model,
+    temperature: 0.4,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ]
+  }, 2);
+
+  const rawContent = response?.choices?.[0]?.message?.content || "";
+  const parsed = JSON.parse(rawContent);
+  return normalizeDailyNewsModelEntry(parsed);
+}
 
 function getAIProviderLabel() {
   return "OpenAI";
@@ -34,6 +467,17 @@ function getAIKey() {
 
 function getAIModel() {
   return process.env.OPENAI_MODEL || "gpt-4.1-mini";
+}
+
+function getAIFallbackModels() {
+  const rawValue = typeof process.env.OPENAI_FALLBACK_MODELS === "string"
+    ? process.env.OPENAI_FALLBACK_MODELS
+    : "";
+
+  return rawValue
+    .split(",")
+    .map(model => model.trim())
+    .filter(Boolean);
 }
 
 function createAIClient() {
@@ -77,6 +521,8 @@ function getAssistantSystemPrompt(agentType = "general") {
     "Quand l'utilisateur demande de supprimer, annuler ou retirer un rappel existant, utilise l'outil de suppression du planning.",
     "Quand une information durable sur l'utilisateur apparaît, tu peux l'enregistrer en mémoire avec l'outil adapté.",
     "Quand une question nécessite des informations récentes ou externes, utilise la recherche web.",
+    "Quand l'utilisateur demande un résumé basé sur un site précis ou sur un résultat web, ouvre d'abord la page avec l'outil de lecture de page avant de répondre.",
+    "Ne te contente pas de renvoyer un lien si l'utilisateur demande une synthèse ou des données précises.",
     "Sois concret, exact et utile."
   ].join(" ");
 }
@@ -832,14 +1278,55 @@ function isRateLimitError(error) {
     || rawMessage.includes("quota");
 }
 
-function getModelCandidates(model) {
-  return [model].filter(Boolean);
+function isTransientNetworkError(error) {
+  const rawMessage = typeof error?.message === "string"
+    ? error.message.toLowerCase()
+    : typeof error?.error === "string"
+      ? error.error.toLowerCase()
+      : "";
+  const causeMessage = typeof error?.cause?.message === "string"
+    ? error.cause.message.toLowerCase()
+    : "";
+  const errorCode = typeof error?.code === "string" ? error.code.toLowerCase() : "";
+  const causeCode = typeof error?.cause?.code === "string" ? error.cause.code.toLowerCase() : "";
+
+  return rawMessage.includes("fetch failed")
+    || rawMessage.includes("socket hang up")
+    || rawMessage.includes("econnreset")
+    || rawMessage.includes("etimedout")
+    || rawMessage.includes("timeout")
+    || rawMessage.includes("network")
+    || causeMessage.includes("econnreset")
+    || causeMessage.includes("etimedout")
+    || causeMessage.includes("timeout")
+    || ["econnreset", "etimedout", "eai_again", "enotfound", "econnrefused"].includes(errorCode)
+    || ["econnreset", "etimedout", "eai_again", "enotfound", "econnrefused"].includes(causeCode);
 }
 
-async function createChatCompletionWithRetry(client, payload, maxAttempts = 3) {
-  let lastError = null;
+function isRetryableOpenAIError(error) {
+  return isRateLimitError(error) || isTransientNetworkError(error);
+}
 
-  for (const candidateModel of getModelCandidates(payload.model)) {
+function getModelCandidates(model) {
+  const normalizedModel = typeof model === "string" ? model.trim() : "";
+  const configuredFallbacks = getAIFallbackModels();
+  const defaultFallbacks = normalizedModel === "gpt-4.1-nano"
+    ? ["gpt-4.1-mini"]
+    : ["gpt-4.1-mini", "gpt-4.1-nano"];
+
+  return [...new Set([normalizedModel, ...configuredFallbacks, ...defaultFallbacks].filter(Boolean))];
+}
+
+function getOpenAIRetryDelayMs(attempt, modelIndex = 0) {
+  const exponentialDelay = 1200 * (2 ** Math.max(0, attempt - 1));
+  return Math.min(10000, exponentialDelay + (modelIndex * 500));
+}
+
+async function createChatCompletionWithRetry(client, payload, maxAttempts = 5) {
+  let lastError = null;
+  const candidateModels = getModelCandidates(payload.model);
+
+  for (const [modelIndex, candidateModel] of candidateModels.entries()) {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         return await client.chat.completions.create({
@@ -848,12 +1335,12 @@ async function createChatCompletionWithRetry(client, payload, maxAttempts = 3) {
         });
       } catch (error) {
         lastError = error;
-        if (!isRateLimitError(error)) {
+        if (!isRetryableOpenAIError(error)) {
           throw error;
         }
 
         if (attempt < maxAttempts) {
-          await delay(1200 * attempt);
+          await delay(getOpenAIRetryDelayMs(attempt, modelIndex));
           continue;
         }
       }
@@ -1022,6 +1509,21 @@ function getAgentTools(agentType = "general") {
           additionalProperties: false
         }
       }
+    },
+    {
+      type: "function",
+      function: {
+        name: "fetch_webpage",
+        description: "Télécharge et extrait le contenu principal lisible d'une page web ou d'un classement public.",
+        parameters: {
+          type: "object",
+          properties: {
+            url: { type: "string", description: "URL complète en http ou https" }
+          },
+          required: ["url"],
+          additionalProperties: false
+        }
+      }
     }
   ];
 }
@@ -1157,6 +1659,8 @@ async function executeAgentTool(toolName, args, runtime) {
       return getMemorySnapshot(runtime.sessionId);
     case "web_search":
       return searchWeb(args.query);
+    case "fetch_webpage":
+      return fetchWebpage(args.url);
     default:
       return { ok: false, error: `Unknown tool: ${toolName}` };
   }
@@ -1299,6 +1803,10 @@ function getAssistantErrorReply(error) {
     return withDetails(`La clé ${providerLabel} semble invalide. Vérifie ${keyEnvName} dans le fichier .env.`);
   }
 
+  if (isTransientNetworkError(error)) {
+    return withDetails(`La connexion entre Milo et ${providerLabel} a été interrompue temporairement. Réessaie dans quelques secondes.`);
+  }
+
   return withDetails("Milo ne peut pas répondre pour le moment. Réessaie dans un instant.");
 }
 
@@ -1325,20 +1833,55 @@ app.post("/api/chat", async (req, res) => {
         res.json(learningPlanResponse);
         return;
       }
+
+      const directWebResponse = await maybeBuildDirectWebFallback({ message, language });
+      if (directWebResponse) {
+        res.json({
+          reply: directWebResponse.reply,
+          actions: [],
+          memory: getMemorySnapshot(safeSessionId),
+          provider: getAIProviderLabel(),
+          model,
+          fallback: directWebResponse.mode,
+          source: directWebResponse.source
+        });
+        return;
+      }
     }
 
-    const response = await runAgentCompletion({
-      client,
-      model,
-      message,
-      history,
-      language,
-      profile: safeProfile,
-      planning: safePlanning,
-      studyContext: safeStudyContext,
-      sessionId: safeSessionId
-      ,agentType: safeAgentType
-    });
+    let response;
+    try {
+      response = await runAgentCompletion({
+        client,
+        model,
+        message,
+        history,
+        language,
+        profile: safeProfile,
+        planning: safePlanning,
+        studyContext: safeStudyContext,
+        sessionId: safeSessionId,
+        agentType: safeAgentType
+      });
+    } catch (error) {
+      if (safeAgentType === "general" && isTransientNetworkError(error)) {
+        const fallbackResponse = await maybeBuildDirectWebFallback({ message, language });
+        if (fallbackResponse) {
+          res.json({
+            reply: fallbackResponse.reply,
+            actions: [],
+            memory: getMemorySnapshot(safeSessionId),
+            provider: getAIProviderLabel(),
+            model,
+            fallback: fallbackResponse.mode,
+            source: fallbackResponse.source
+          });
+          return;
+        }
+      }
+
+      throw error;
+    }
 
     res.json({
       reply: response.reply,
@@ -1354,6 +1897,67 @@ app.post("/api/chat", async (req, res) => {
     res.status(statusCode).json({
       reply: getAssistantErrorReply(error)
     });
+  }
+});
+
+app.get("/api/daily-news", async (req, res) => {
+  try {
+    const theme = sanitizeDailyNewsTheme(typeof req.query?.theme === "string" ? req.query.theme.trim() : "none");
+    const language = sanitizeDailyNewsLanguage(typeof req.query?.language === "string" ? req.query.language.trim() : "fr");
+
+    if (theme === "none") {
+      res.json({ ok: true, entry: null, cached: false, source: "none" });
+      return;
+    }
+
+    const cacheKey = getDailyNewsCacheKey(theme, language);
+    const cachedEntry = dailyNewsCache.get(cacheKey);
+    if (cachedEntry) {
+      res.json({ ok: true, entry: cachedEntry.entry, cached: true, source: cachedEntry.source });
+      return;
+    }
+
+    const articles = await fetchDailyNewsCandidates(theme, language);
+    if (!articles.length) {
+      res.status(502).json({ ok: false, error: "No news candidates found" });
+      return;
+    }
+
+    let entry = null;
+    let source = "web-fallback";
+
+    if (getAIKey()) {
+      try {
+        const client = createAIClient();
+        const model = getAIModel();
+        entry = await generateDailyNewsSummary({ client, model, theme, language, articles });
+        if (entry) {
+          source = "web";
+        }
+      } catch (error) {
+        console.error("Daily news summary error:", error);
+      }
+    }
+
+    if (!entry) {
+      entry = buildDailyNewsFallbackEntry(theme, language, articles);
+    }
+
+    if (!entry) {
+      res.status(502).json({ ok: false, error: "Unable to build daily news entry" });
+      return;
+    }
+
+    dailyNewsCache.set(cacheKey, {
+      entry,
+      source,
+      createdAt: Date.now()
+    });
+
+    res.json({ ok: true, entry, cached: false, source });
+  } catch (error) {
+    console.error("Daily news fetch error:", error);
+    res.status(500).json({ ok: false, error: "Daily news unavailable" });
   }
 });
 

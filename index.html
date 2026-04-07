@@ -158,6 +158,12 @@
     gap: 8px;
   }
 
+  .home-news-carousel {
+    overflow: hidden;
+    touch-action: pan-y;
+    user-select: none;
+  }
+
   .home-empty-card {
     display: flex;
     align-items: center;
@@ -1862,7 +1868,7 @@
 
   <div class="scroll-area">
     <div class="section-label" id="home-daily-news-label">Daily News</div>
-    <div class="home-list" id="home-daily-news-list"></div>
+    <div class="home-list home-news-carousel" id="home-daily-news-list"></div>
 
     <div class="section-label" id="home-today-label">Aujourd'hui</div>
     <div class="home-list" id="home-today-list"></div>
@@ -2148,17 +2154,6 @@
     <div class="theme-toggle">
       <span id="theme-label">Thème</span>
       <div class="toggle-switch" id="theme-toggle"></div>
-    </div>
-
-    <div class="settings-field">
-      <div class="settings-field-label" id="settings-daily-news-label">Thème Daily News</div>
-      <select class="settings-field-select" id="daily-news-theme">
-        <option value="none" id="daily-news-option-none">Aucun</option>
-        <option value="music" id="daily-news-option-music">Musique</option>
-        <option value="politics" id="daily-news-option-politics">Politique</option>
-        <option value="economy" id="daily-news-option-economy">Économie</option>
-        <option value="art" id="daily-news-option-art">Art</option>
-      </select>
     </div>
 
     <button class="settings-menu-item" id="settings-preferences-item">Préférences</button>
