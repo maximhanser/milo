@@ -2717,12 +2717,12 @@ function renderHomeEventCards(events = []) {
   return events.map((event) => {
     const badgeClass = getEventBadgeClass(event);
     const badgeMarkup = event.meta ? `<span class="badge ${badgeClass}">${escapeHtml(event.meta)}</span>` : '';
-    return `<button type="button" class="card" data-home-date-key="${escapeHtml(event.date)}" style="text-align:left;"><div class="card-dot" style="background:${getEventDotColor(event)}"></div><div class="card-body"><div class="card-title">${escapeHtml(event.title || t('untitledTask'))}</div><div class="card-sub">${escapeHtml(formatHomeEventSubtitle(event))}</div>${badgeMarkup}</div></button>`;
+    return `<button type="button" class="card" data-home-date-key="${escapeHtml(event.date)}" data-home-event-id="${event.id}" style="text-align:left;"><div class="card-dot" style="background:${getEventDotColor(event)}"></div><div class="card-body"><div class="card-title">${escapeHtml(event.title || t('untitledTask'))}</div><div class="card-sub">${escapeHtml(formatHomeEventSubtitle(event))}</div>${badgeMarkup}</div></button>`;
   }).join('');
 }
 
 function renderMonthlyPrimaryCards(tasks = []) {
-  return tasks.map((task) => (`<button type="button" class="card home-monthly-card" data-home-month-key="${escapeHtml(task.monthKey)}" style="text-align:left;"><div class="card-dot" style="background:var(--accent)"></div><div class="card-body"><div class="card-title">${escapeHtml(task.title)}</div><div class="card-sub">${escapeHtml(formatMonthLabelFromKey(task.monthKey))}</div><div class="home-monthly-meta"><span class="badge badge-purple">${escapeHtml(t('homeMonthlyPrimaryBadge', { count: task.reminderCount }))}</span><span class="home-monthly-subtle">${escapeHtml(t('homeMonthBadge'))}</span></div></div></button>`)).join('');
+  return tasks.map((task) => (`<button type="button" class="card home-monthly-card" data-home-month-key="${escapeHtml(task.monthKey)}" data-home-task-title="${escapeHtml(task.title)}" style="text-align:left;"><div class="card-dot" style="background:var(--accent)"></div><div class="card-body"><div class="card-title">${escapeHtml(task.title)}</div><div class="card-sub">${escapeHtml(formatMonthLabelFromKey(task.monthKey))}</div><div class="home-monthly-meta"><span class="badge badge-purple">${escapeHtml(t('homeMonthlyPrimaryBadge', { count: task.reminderCount }))}</span><span class="home-monthly-subtle">${escapeHtml(t('homeMonthBadge'))}</span></div></div></button>`)).join('');
 }
 
 function renderDailyNewsEmptyState() {
@@ -2788,7 +2788,13 @@ function renderHomePage() {
   maybeRefreshDailyNews();
 }
 
-function openPlanningMonth(monthKey) {
+function openPlanningMonth(monthKey, taskTitle = '') {
+  const matchingEvent = findMonthlyTaskPlanningEvent(monthKey, taskTitle);
+  if (matchingEvent) {
+    openPlanningDay(matchingEvent.date, matchingEvent.id);
+    return;
+  }
+
   const monthDate = parseMonthKey(monthKey);
   if (!monthDate) return;
   planningState.currentDate = monthDate;
@@ -3205,7 +3211,33 @@ function selectPlanningEvent(eventId) {
   renderPlanningPanel();
 }
 
-function openPlanningDay(dateKey) {
+function openPlanningEvent(eventId) {
+  const existingEvent = getActivePlanningEvents().find((event) => event.id === eventId);
+  if (!existingEvent) return false;
+
+  openPlanningDay(existingEvent.date, existingEvent.id);
+  return true;
+}
+
+function findMonthlyTaskPlanningEvent(monthKey, title) {
+  const normalizedTitle = normalizeTaskIdentityTitle(title);
+  if (!monthKey || !normalizedTitle) return null;
+
+  const currentDateKey = formatDateKey(new Date());
+  const matchingEvents = getActivePlanningEvents()
+    .filter((event) => getMonthKeyFromDateKey(event.date) === monthKey && normalizeTaskIdentityTitle(event.title) === normalizedTitle)
+    .sort((left, right) => {
+      const leftStamp = `${left.date} ${left.time || '00:00'}`;
+      const rightStamp = `${right.date} ${right.time || '00:00'}`;
+      return leftStamp.localeCompare(rightStamp);
+    });
+
+  if (!matchingEvents.length) return null;
+
+  return matchingEvents.find((event) => event.date >= currentDateKey) || matchingEvents[0];
+}
+
+function openPlanningDay(dateKey, selectedEventId = null) {
   const [year, month, day] = dateKey.split('-').map(Number);
   if (!year || !month || !day) return;
 
@@ -3214,7 +3246,9 @@ function openPlanningDay(dateKey) {
   const dayEvents = getActivePlanningEvents()
     .filter(event => event.date === dateKey)
     .sort((a, b) => a.time.localeCompare(b.time));
-  planningState.selectedEventId = dayEvents[0]?.id || null;
+  planningState.selectedEventId = dayEvents.some((event) => event.id === selectedEventId)
+    ? selectedEventId
+    : dayEvents[0]?.id || null;
   renderPlanningPanel();
 }
 
@@ -3781,14 +3815,17 @@ function renderPlanningPanel() {
 document.addEventListener('click', (event) => {
   const homeDayCard = event.target.closest('[data-home-date-key]');
   if (homeDayCard) {
-    openPlanningDay(homeDayCard.dataset.homeDateKey);
+    const targetEventId = Number(homeDayCard.dataset.homeEventId);
+    if (!openPlanningEvent(targetEventId)) {
+      openPlanningDay(homeDayCard.dataset.homeDateKey);
+    }
     openPanelSection('planning');
     return;
   }
 
   const homeMonthCard = event.target.closest('[data-home-month-key]');
   if (homeMonthCard) {
-    openPlanningMonth(homeMonthCard.dataset.homeMonthKey);
+    openPlanningMonth(homeMonthCard.dataset.homeMonthKey, homeMonthCard.dataset.homeTaskTitle || '');
   }
 });
 

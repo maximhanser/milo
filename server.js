@@ -83,6 +83,7 @@ function decodeHtmlEntities(value = "") {
   return String(value)
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
@@ -94,7 +95,8 @@ function decodeHtmlEntities(value = "") {
 }
 
 function stripHtml(value = "") {
-  return decodeHtmlEntities(String(value).replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  const decodedValue = decodeHtmlEntities(String(value));
+  return decodedValue.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function sanitizeFetchedWebText(html = "") {
@@ -356,6 +358,14 @@ function buildGoogleNewsRssUrl(theme, language) {
   return `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} when:1d`)}&hl=${encodeURIComponent(locale.hl)}&gl=${encodeURIComponent(locale.gl)}&ceid=${encodeURIComponent(locale.ceid)}`;
 }
 
+function buildGoogleNewsSearchUrl(query, language, recency = "when:3d") {
+  const safeLanguage = sanitizeDailyNewsLanguage(language);
+  const locale = DAILY_NEWS_LOCALES[safeLanguage];
+  const normalizedQuery = typeof query === "string" ? query.trim() : "";
+
+  return `https://news.google.com/rss/search?q=${encodeURIComponent(`${normalizedQuery} ${recency}`.trim())}&hl=${encodeURIComponent(locale.hl)}&gl=${encodeURIComponent(locale.gl)}&ceid=${encodeURIComponent(locale.ceid)}`;
+}
+
 async function fetchDailyNewsCandidates(theme, language) {
   const safeTheme = sanitizeDailyNewsTheme(theme);
   if (safeTheme === "none") return [];
@@ -368,6 +378,21 @@ async function fetchDailyNewsCandidates(theme, language) {
   });
 
   return parseNewsRss(xml);
+}
+
+async function fetchNewsArticlesForQuery(query, language) {
+  const normalizedQuery = typeof query === "string" ? query.trim() : "";
+  if (!normalizedQuery) return [];
+
+  const rssUrl = buildGoogleNewsSearchUrl(normalizedQuery, language);
+  const xml = await fetchTextWithTimeout(rssUrl, {
+    headers: {
+      "User-Agent": "Milo/1.0"
+    },
+    timeoutMs: 10000
+  });
+
+  return parseNewsRss(xml).slice(0, 5);
 }
 
 function getDailyNewsThemeLabel(theme, language) {
@@ -520,7 +545,8 @@ function getAssistantSystemPrompt(agentType = "general") {
     "Quand l'utilisateur demande de renommer, modifier ou déplacer un rappel existant, mets à jour l'événement existant au lieu d'en créer un nouveau.",
     "Quand l'utilisateur demande de supprimer, annuler ou retirer un rappel existant, utilise l'outil de suppression du planning.",
     "Quand une information durable sur l'utilisateur apparaît, tu peux l'enregistrer en mémoire avec l'outil adapté.",
-    "Quand une question nécessite des informations récentes ou externes, utilise la recherche web.",
+    "Quand une question nécessite des informations récentes ou externes, utilise d'abord l'outil de recherche web enrichie.",
+    "Quand tu fais une recherche web, synthétise les faits à partir de plusieurs sources lues et mentionne les sources utiles dans la réponse finale.",
     "Quand l'utilisateur demande un résumé basé sur un site précis ou sur un résultat web, ouvre d'abord la page avec l'outil de lecture de page avant de répondre.",
     "Ne te contente pas de renvoyer un lien si l'utilisateur demande une synthèse ou des données précises.",
     "Sois concret, exact et utile."
@@ -1142,6 +1168,226 @@ function buildLearningPlanCreatedReply({ draft, totalSessions, defaultTime, week
   return `J'ai ajouté ${totalSessions} rappels pour ${topicTitle} : ${draft.sessionsPerWeek} séances par semaine, ${draft.minutesPerSession} min par séance, les ${daysLabel}, à ${defaultTime}.`;
 }
 
+function maybeHandleMiloAcronymQuery({ message, language, sessionId }) {
+  const normalizedMessage = normalizeText(typeof message === "string" ? message : "");
+  if (!normalizedMessage) {
+    return null;
+  }
+
+  const mentionsMilo = normalizedMessage.includes("milo");
+  const asksMeaning = [
+    "stand for",
+    "stands for",
+    "acronyme",
+    "acronym",
+    "signifie",
+    "veut dire",
+    "meaning",
+    "meaning of",
+    "quoi signifie",
+    "what is milo"
+  ].some(fragment => normalizedMessage.includes(fragment));
+
+  if (!mentionsMilo || !asksMeaning) {
+    return null;
+  }
+
+  if (language === "en") {
+    return {
+      reply: "Milo stands for Machine Intelligence for Live Optimization.",
+      actions: [],
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  if (language === "es") {
+    return {
+      reply: "Milo significa Machine Intelligence for Live Optimization.",
+      actions: [],
+      memory: getMemorySnapshot(sessionId)
+    };
+  }
+
+  return {
+    reply: "Milo signifie Machine Intelligence for Live Optimization.",
+    actions: [],
+    memory: getMemorySnapshot(sessionId)
+  };
+}
+
+function extractDirectWebResearchQuery(message = "") {
+  const normalizedMessage = typeof message === "string" ? message.trim() : "";
+  if (!normalizedMessage) return "";
+
+  return normalizedMessage
+    .replace(/^(?:fais|fait|lance|effectue|peux-tu faire|peux tu faire|tu peux faire)\s+(?:une\s+)?(?:vraie\s+)?recherche\s+web\s+sur\s+/i, "")
+    .replace(/^(?:cherche|recherche)\s+(?:sur le web\s+|sur internet\s+)?/i, "")
+    .replace(/\s+(?:et\s+)?(?:resume-les|résume-les|resume-moi|résume-moi|resume|résume|fais un resume|fais une synthese|fais une synthèse)\b[\s\S]*$/i, "")
+    .replace(/\s+(?:en citant les sources|avec sources|avec les sources|cite les sources)\b[\s\S]*$/i, "")
+    .replace(/^[\s:,-]+|[\s:,-]+$/g, "")
+    .trim();
+}
+
+function isExplicitWebResearchRequest(message = "") {
+  const normalizedMessage = normalizeText(typeof message === "string" ? message : "");
+  if (!normalizedMessage) return false;
+
+  const explicitResearchKeywords = [
+    "recherche web",
+    "sur le web",
+    "sur internet",
+    "web research",
+    "search the web",
+    "search web",
+    "cite les sources",
+    "with sources",
+    "source web"
+  ];
+
+  return explicitResearchKeywords.some(keyword => normalizedMessage.includes(keyword));
+}
+
+function buildDirectWebResearchReply({ query, language = "fr", research }) {
+  const topResults = Array.isArray(research?.results) ? research.results.filter(result => result.fetchOk || result.snippet).slice(0, 3) : [];
+  if (!topResults.length) {
+    return language === "en"
+      ? `I couldn't find enough reliable web results for: ${query}.`
+      : language === "es"
+        ? `No encontre suficientes resultos web fiables para: ${query}.`
+        : `Je n'ai pas trouvé assez de résultats web fiables pour : ${query}.`;
+  }
+
+  const summaryLines = topResults.map((result, index) => {
+    const detail = result.excerpt || result.snippet || result.pageTitle || result.title;
+    return `${index + 1}. ${result.title} (${result.source || getHostnameLabel(result.url)}) : ${detail}`;
+  });
+
+  if (language === "en") {
+    return [
+      `Here is a web-based summary for: ${query}.`,
+      ...summaryLines,
+      `Sources: ${topResults.map(result => result.url).join(" | ")}`
+    ].join(" ");
+  }
+
+  if (language === "es") {
+    return [
+      `Aqui tienes una synthese web para: ${query}.`,
+      ...summaryLines,
+      `Fuentes: ${topResults.map(result => result.url).join(" | ")}`
+    ].join(" ");
+  }
+
+  return [
+    `Voici une synthèse web pour : ${query}.`,
+    ...summaryLines,
+    `Sources : ${topResults.map(result => result.url).join(" | ")}`
+  ].join(" ");
+}
+
+function isNewsResearchQuery(query = "") {
+  const normalizedQuery = normalizeText(typeof query === "string" ? query : "");
+  return ["actualite", "actualites", "news", "dernieres infos", "derniere info", "latest news"].some(keyword => normalizedQuery.includes(keyword));
+}
+
+function buildDirectNewsResearchReply({ query, language = "fr", articles = [] }) {
+  const topArticles = articles.slice(0, 3);
+  if (!topArticles.length) {
+    return language === "en"
+      ? `I couldn't find recent news for: ${query}.`
+      : language === "es"
+        ? `No encontre noticias recientes para: ${query}.`
+        : `Je n'ai pas trouvé d'actualités récentes pour : ${query}.`;
+  }
+
+  const lines = topArticles.map((article, index) => `${index + 1}. ${article.title} : ${article.description || article.pubDate || article.link}`);
+  const sourceLinks = topArticles.map(article => article.link).join(" | ");
+
+  if (language === "en") {
+    return [`Here is a web news summary for: ${query}.`, ...lines, `Sources: ${sourceLinks}`].join(" ");
+  }
+
+  if (language === "es") {
+    return [`Aqui tienes un resumen web de noticias para: ${query}.`, ...lines, `Fuentes: ${sourceLinks}`].join(" ");
+  }
+
+  return [`Voici une synthèse d'actualités web pour : ${query}.`, ...lines, `Sources : ${sourceLinks}`].join(" ");
+}
+
+async function maybeHandleDirectWebResearch({ message, language, sessionId }) {
+  if (!isExplicitWebResearchRequest(message)) {
+    return null;
+  }
+
+  const query = extractDirectWebResearchQuery(message) || String(message || "").trim();
+  if (!query) {
+    return null;
+  }
+
+  if (isNewsResearchQuery(query)) {
+    try {
+      const articles = await fetchNewsArticlesForQuery(query, language);
+      return {
+        reply: buildDirectNewsResearchReply({ query, language, articles }),
+        actions: [],
+        memory: getMemorySnapshot(sessionId),
+        sources: articles.map(article => ({ title: article.title, url: article.link })),
+        fallback: "direct-news-research"
+      };
+    } catch (error) {
+      return {
+        reply: language === "en"
+          ? `The news research failed temporarily for: ${query}.`
+          : language === "es"
+            ? `La busqueda de noticias fallo temporalmente para: ${query}.`
+            : `La recherche d'actualités a échoué temporairement pour : ${query}.`,
+        actions: [],
+        memory: getMemorySnapshot(sessionId),
+        error: typeof error?.message === "string" ? error.message : "News research failed",
+        fallback: "direct-news-research-error"
+      };
+    }
+  }
+
+  let research;
+  try {
+    research = await researchWeb(query);
+  } catch (error) {
+    return {
+      reply: language === "en"
+        ? `The web research failed temporarily for: ${query}.`
+        : language === "es"
+          ? `La busqueda web fallo temporalmente para: ${query}.`
+          : `La recherche web a échoué temporairement pour : ${query}.`,
+      actions: [],
+      memory: getMemorySnapshot(sessionId),
+      error: typeof error?.message === "string" ? error.message : "Web research failed",
+      fallback: "direct-web-research-error"
+    };
+  }
+
+  if (!research?.ok) {
+    return {
+      reply: language === "en"
+        ? `I couldn't complete the web research for: ${query}.`
+        : language === "es"
+          ? `No pude completar la busqueda web para: ${query}.`
+          : `Je n'ai pas pu terminer la recherche web pour : ${query}.`,
+      actions: [],
+      memory: getMemorySnapshot(sessionId),
+      sources: research?.sources || []
+    };
+  }
+
+  return {
+    reply: buildDirectWebResearchReply({ query, language, research }),
+    actions: [],
+    memory: getMemorySnapshot(sessionId),
+    sources: research.sources || [],
+    fallback: "direct-web-research"
+  };
+}
+
 function maybeHandleLearningPlanFlow({ message, language, planning, sessionId }) {
   const normalizedMessage = normalizeText(typeof message === "string" ? message : "");
   const existingDraft = getLearningPlanDraft(sessionId);
@@ -1350,27 +1596,19 @@ async function createChatCompletionWithRetry(client, payload, maxAttempts = 5) {
   throw lastError;
 }
 
-async function searchWeb(query) {
-  const normalizedQuery = typeof query === "string" ? query.trim() : "";
-  if (!normalizedQuery) {
-    return { ok: false, results: [] };
-  }
+function parseSearchResultsHtml(html = "") {
+  const resultBlocks = [...html.matchAll(/<div[^>]*class="[^"]*result[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi)]
+    .map((match) => match[1] || "")
+    .filter(Boolean);
 
-  const response = await fetch(`https://duckduckgo.com/html/?q=${encodeURIComponent(normalizedQuery)}`, {
-    headers: {
-      "User-Agent": "Milo/1.0"
-    }
-  });
+  return resultBlocks.map((block) => {
+    const linkMatch = block.match(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/i)
+      || block.match(/<div[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/div>/i);
 
-  if (!response.ok) {
-    return { ok: false, results: [], error: `HTTP ${response.status}` };
-  }
-
-  const html = await response.text();
-  const matches = [...html.matchAll(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/g)].slice(0, 5);
-  const results = matches.map((match) => {
-    const rawHref = match[1] || "";
-    const title = (match[2] || "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim();
+    const rawHref = linkMatch?.[1] || "";
+    const title = stripHtml(linkMatch?.[2] || "").trim();
+    const snippet = stripHtml(snippetMatch?.[1] || "").trim().slice(0, 240);
     let url = rawHref;
 
     if (rawHref.includes("uddg=")) {
@@ -1380,10 +1618,103 @@ async function searchWeb(query) {
       }
     }
 
-    return { title, url };
-  }).filter(result => result.title && result.url);
+    return { title, url, snippet };
+  }).filter(result => result.title && result.url).slice(0, 6);
 
-  return { ok: true, results };
+}
+
+async function searchWeb(query) {
+  const normalizedQuery = typeof query === "string" ? query.trim() : "";
+  if (!normalizedQuery) {
+    return { ok: false, results: [] };
+  }
+
+  const searchUrls = [
+    `https://duckduckgo.com/html/?q=${encodeURIComponent(normalizedQuery)}`,
+    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(normalizedQuery)}`
+  ];
+
+  let lastError = null;
+
+  for (const searchUrl of searchUrls) {
+    try {
+      const html = await fetchTextWithTimeout(searchUrl, {
+        headers: {
+          "User-Agent": "Milo/1.0",
+          "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"
+        },
+        timeoutMs: 10000
+      });
+      const results = parseSearchResultsHtml(html);
+
+      if (results.length) {
+        return { ok: true, provider: "duckduckgo", results };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  return {
+    ok: false,
+    provider: "duckduckgo",
+    results: [],
+    error: typeof lastError?.message === "string" ? lastError.message : "Search failed"
+  };
+}
+
+function getHostnameLabel(url = "") {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+async function researchWeb(query) {
+  const normalizedQuery = typeof query === "string" ? query.trim() : "";
+  if (!normalizedQuery) {
+    return { ok: false, results: [], sources: [], error: "Empty query" };
+  }
+
+  const searchResponse = await searchWeb(normalizedQuery);
+  if (!searchResponse.ok || !Array.isArray(searchResponse.results) || !searchResponse.results.length) {
+    return {
+      ok: false,
+      query: normalizedQuery,
+      results: searchResponse?.results || [],
+      sources: [],
+      error: searchResponse?.error || "No search results"
+    };
+  }
+
+  const enrichedResults = [];
+
+  for (const result of searchResponse.results.slice(0, 3)) {
+    const page = await fetchWebpage(result.url);
+    enrichedResults.push({
+      title: result.title,
+      url: result.url,
+      snippet: result.snippet,
+      source: getHostnameLabel(result.url),
+      pageTitle: page?.ok ? page.title : "",
+      excerpt: page?.ok ? String(page.excerpt || "").slice(0, 900) : "",
+      tableRows: page?.ok ? (Array.isArray(page.tableRows) ? page.tableRows.slice(0, 8) : []) : [],
+      fetchOk: Boolean(page?.ok),
+      fetchError: page?.ok ? "" : (page?.error || "")
+    });
+  }
+
+  return {
+    ok: true,
+    query: normalizedQuery,
+    results: enrichedResults,
+    sources: enrichedResults.map((result) => ({
+      title: result.title,
+      url: result.url,
+      source: result.source
+    }))
+  };
 }
 
 function getAgentTools(agentType = "general") {
@@ -1498,8 +1829,23 @@ function getAgentTools(agentType = "general") {
     {
       type: "function",
       function: {
+        name: "research_web",
+        description: "Effectue une vraie recherche web multi-sources: recherche, ouvre plusieurs pages et renvoie des extraits lisibles.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Question ou sujet à rechercher sur le web" }
+          },
+          required: ["query"],
+          additionalProperties: false
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "web_search",
-        description: "Recherche des informations récentes ou externes sur le web.",
+        description: "Recherche des informations sur le web et retourne les premiers résultats avec snippets.",
         parameters: {
           type: "object",
           properties: {
@@ -1657,6 +2003,8 @@ async function executeAgentTool(toolName, args, runtime) {
       return rememberNote(runtime.sessionId, args.note);
     case "get_memory_notes":
       return getMemorySnapshot(runtime.sessionId);
+    case "research_web":
+      return researchWeb(args.query);
     case "web_search":
       return searchWeb(args.query);
     case "fetch_webpage":
@@ -1822,6 +2170,28 @@ app.post("/api/chat", async (req, res) => {
     const safeAgentType = agent === "education" ? "education" : "general";
 
     if (safeAgentType === "general") {
+      const miloAcronymResponse = maybeHandleMiloAcronymQuery({
+        message,
+        language,
+        sessionId: safeSessionId
+      });
+
+      if (miloAcronymResponse) {
+        res.json(miloAcronymResponse);
+        return;
+      }
+
+      const directWebResearchResponse = await maybeHandleDirectWebResearch({
+        message,
+        language,
+        sessionId: safeSessionId
+      });
+
+      if (directWebResearchResponse) {
+        res.json(directWebResearchResponse);
+        return;
+      }
+
       const learningPlanResponse = maybeHandleLearningPlanFlow({
         message,
         language,
