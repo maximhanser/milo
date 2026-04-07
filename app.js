@@ -78,9 +78,25 @@
     const settingsMenuTriggerEducation = document.getElementById('settings-menu-trigger-education');
     const settingsMenuTriggerPersonal = document.getElementById('settings-menu-trigger-personal');
     const settingsMenuClose = document.getElementById('settings-menu-close');
+    const settingsPreferencesItem = document.getElementById('settings-preferences-item');
+    const settingsLogoutItem = document.getElementById('settings-logout-item');
     const themeToggle = document.getElementById('theme-toggle');
     const homeDailyNewsList = document.getElementById('home-daily-news-list');
     const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
+    const accessScreen = document.getElementById('access-screen');
+    const accessBadge = document.getElementById('access-badge');
+    const accessTitle = document.getElementById('access-title');
+    const accessCopy = document.getElementById('access-copy');
+    const accessUsernameLabel = document.getElementById('access-username-label');
+    const accessPasswordLabel = document.getElementById('access-password-label');
+    const accessUsernameInput = document.getElementById('access-username');
+    const accessPasswordInput = document.getElementById('access-password');
+    const accessPasswordToggle = document.getElementById('access-password-toggle');
+    const accessPasswordToggleIcon = document.getElementById('access-password-toggle-icon');
+    const accessError = document.getElementById('access-error');
+    const accessPrimaryButton = document.getElementById('access-primary-btn');
+    const accessGuestButton = document.getElementById('access-guest-btn');
+    const accessFootnote = document.getElementById('access-footnote');
     const avatarImages = document.querySelectorAll('.profile-avatar-image');
     const profileFirstNameInput = document.getElementById('profile-first-name');
     const profileEmailInput = document.getElementById('profile-email');
@@ -101,6 +117,13 @@
     const educationSourceStorageKey = 'milo.educationSourceText';
     const planningStorageKey = 'milo.planning';
     const monthlyPrimaryTasksStorageKey = 'milo.monthlyPrimaryTasks';
+    const localAccessAccountStorageKey = 'milo.localAccessAccount';
+    const localAccessSessionStorageKey = 'milo.localAccessSession';
+    const navHomeItem = document.getElementById('nav-home-item');
+    const navPlanningItem = document.getElementById('nav-planning-item');
+    const navEducationItem = document.getElementById('nav-education-item');
+    const navProgressItem = document.getElementById('nav-progress-item');
+    const bottomNav = document.querySelector('.bottom-nav');
     let savedProfileSnapshot = null;
     let currentProfilePhotoData = '';
     let currentLanguage = 'fr';
@@ -115,6 +138,12 @@
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
     let dailyNewsTheme = 'none';
+    let accessState = {
+      mode: 'locked',
+      username: '',
+      hasLocalAccount: false
+    };
+    let isAccessPasswordVisible = false;
     let dailyNewsState = {
       cacheKey: '',
       entry: null,
@@ -236,6 +265,39 @@
         settingsTheme: 'Thème',
         settingsDailyNewsTheme: 'Thème Daily News',
         settingsPreferences: 'Préférences',
+        settingsLogout: 'Déconnexion',
+        settingsExitGuest: 'Quitter le mode sans compte',
+        accessKicker: 'Milo local',
+        accessBadge: 'Mémoire locale sur cet appareil',
+        accessTitleCreate: 'Créer un espace local',
+        accessTitleLogin: 'Connexion locale',
+        accessCopyCreate: 'Ton identifiant et ta mémoire restent sur cet appareil. Aucun compte serveur n’est nécessaire.',
+        accessCopyLogin: 'Retrouve ton espace local sur cet appareil avec ton identifiant et ton mot de passe.',
+        accessUsername: 'Identifiant',
+        accessPassword: 'Mot de passe',
+        accessPasswordShow: 'Afficher le mot de passe',
+        accessPasswordHide: 'Masquer le mot de passe',
+        accessUsernamePlaceholderCreate: 'Choisis un identifiant',
+        accessUsernamePlaceholderLogin: 'Ton identifiant local',
+        accessPasswordPlaceholderCreate: 'Choisis un mot de passe',
+        accessPasswordPlaceholderLogin: 'Ton mot de passe local',
+        accessPrimaryCreate: 'Créer mon espace local',
+        accessPrimaryLogin: 'Se connecter',
+        accessGuest: 'Continuer sans compte',
+        accessFootnote: 'Le mode sans compte donne uniquement accès au chat Milo IA et à Éducation.',
+        guestHomeLabel: 'Mode sans compte',
+        guestHomeTitle: 'Accès rapide à Milo IA',
+        guestHomeSub: 'Sur cet appareil, le mode sans compte donne accès au chat Milo IA et à Éducation sans mémoire personnelle locale.',
+        guestHomeChatHint: 'Appuie sur Milo pour ouvrir le chat IA.',
+        guestHomeEducationHint: 'Utilise Éducation depuis la barre du bas.',
+        toastAccessMissingCredentials: 'Renseigne un identifiant et un mot de passe.',
+        toastAccessCreated: 'Espace local créé sur cet appareil.',
+        toastAccessLoggedIn: 'Connexion locale réussie.',
+        toastAccessInvalid: 'Identifiant ou mot de passe incorrect.',
+        accessInlineInvalid: 'Mot de passe incorrect.',
+        toastGuestModeEnabled: 'Mode sans compte activé.',
+        toastGuestProfileUnavailable: 'Le profil n’est pas disponible en mode sans compte.',
+        toastGuestPlanningUnavailable: 'Le planning n’est pas disponible en mode sans compte.',
         newsThemeNone: 'Aucun',
         newsThemeMusic: 'Musique',
         newsThemePolitics: 'Politique',
@@ -397,6 +459,39 @@
         settingsTheme: 'Theme',
         settingsDailyNewsTheme: 'Daily News theme',
         settingsPreferences: 'Preferences',
+        settingsLogout: 'Log out',
+        settingsExitGuest: 'Exit no-account mode',
+        accessKicker: 'Milo local',
+        accessBadge: 'Local memory on this device',
+        accessTitleCreate: 'Create a local space',
+        accessTitleLogin: 'Local sign in',
+        accessCopyCreate: 'Your identifier and memory stay on this device. No server account is required.',
+        accessCopyLogin: 'Open your local space on this device with your identifier and password.',
+        accessUsername: 'Identifier',
+        accessPassword: 'Password',
+        accessPasswordShow: 'Show password',
+        accessPasswordHide: 'Hide password',
+        accessUsernamePlaceholderCreate: 'Choose an identifier',
+        accessUsernamePlaceholderLogin: 'Your local identifier',
+        accessPasswordPlaceholderCreate: 'Choose a password',
+        accessPasswordPlaceholderLogin: 'Your local password',
+        accessPrimaryCreate: 'Create my local space',
+        accessPrimaryLogin: 'Sign in',
+        accessGuest: 'Continue without account',
+        accessFootnote: 'No-account mode only gives access to Milo AI chat and Education.',
+        guestHomeLabel: 'No-account mode',
+        guestHomeTitle: 'Quick access to Milo AI',
+        guestHomeSub: 'On this device, no-account mode gives access to Milo AI chat and Education without local personal memory.',
+        guestHomeChatHint: 'Press Milo to open the AI chat.',
+        guestHomeEducationHint: 'Use Education from the bottom bar.',
+        toastAccessMissingCredentials: 'Enter an identifier and a password.',
+        toastAccessCreated: 'Local space created on this device.',
+        toastAccessLoggedIn: 'Local sign in successful.',
+        toastAccessInvalid: 'Incorrect identifier or password.',
+        accessInlineInvalid: 'Incorrect password.',
+        toastGuestModeEnabled: 'No-account mode enabled.',
+        toastGuestProfileUnavailable: 'Profile is not available in no-account mode.',
+        toastGuestPlanningUnavailable: 'Planning is not available in no-account mode.',
         newsThemeNone: 'None',
         newsThemeMusic: 'Music',
         newsThemePolitics: 'Politics',
@@ -558,6 +653,39 @@
         settingsTheme: 'Tema',
         settingsDailyNewsTheme: 'Tema Daily News',
         settingsPreferences: 'Preferencias',
+        settingsLogout: 'Cerrar sesión',
+        settingsExitGuest: 'Salir del modo sin cuenta',
+        accessKicker: 'Milo local',
+        accessBadge: 'Memoria local en este dispositivo',
+        accessTitleCreate: 'Crear un espacio local',
+        accessTitleLogin: 'Conexion local',
+        accessCopyCreate: 'Tu identificador y tu memoria se quedan en este dispositivo. No hace falta una cuenta del servidor.',
+        accessCopyLogin: 'Abre tu espacio local en este dispositivo con tu identificador y tu contraseña.',
+        accessUsername: 'Identificador',
+        accessPassword: 'Contrasena',
+        accessPasswordShow: 'Mostrar la contrasena',
+        accessPasswordHide: 'Ocultar la contrasena',
+        accessUsernamePlaceholderCreate: 'Elige un identificador',
+        accessUsernamePlaceholderLogin: 'Tu identificador local',
+        accessPasswordPlaceholderCreate: 'Elige una contrasena',
+        accessPasswordPlaceholderLogin: 'Tu contrasena local',
+        accessPrimaryCreate: 'Crear mi espacio local',
+        accessPrimaryLogin: 'Entrar',
+        accessGuest: 'Continuar sin cuenta',
+        accessFootnote: 'El modo sin cuenta solo da acceso al chat IA de Milo y a Educacion.',
+        guestHomeLabel: 'Modo sin cuenta',
+        guestHomeTitle: 'Acceso rapido a Milo IA',
+        guestHomeSub: 'En este dispositivo, el modo sin cuenta da acceso al chat IA de Milo y a Educacion sin memoria personal local.',
+        guestHomeChatHint: 'Pulsa Milo para abrir el chat IA.',
+        guestHomeEducationHint: 'Usa Educacion desde la barra inferior.',
+        toastAccessMissingCredentials: 'Introduce un identificador y una contrasena.',
+        toastAccessCreated: 'Espacio local creado en este dispositivo.',
+        toastAccessLoggedIn: 'Conexion local correcta.',
+        toastAccessInvalid: 'Identificador o contrasena incorrectos.',
+        accessInlineInvalid: 'Contrasena incorrecta.',
+        toastGuestModeEnabled: 'Modo sin cuenta activado.',
+        toastGuestProfileUnavailable: 'El perfil no esta disponible en modo sin cuenta.',
+        toastGuestPlanningUnavailable: 'La planificacion no esta disponible en modo sin cuenta.',
         newsThemeNone: 'Ninguno',
         newsThemeMusic: 'Musica',
         newsThemePolitics: 'Politica',
@@ -1060,6 +1188,9 @@ function applyTranslations() {
   setText('settings-menu-title', 'settingsTitle');
   setText('theme-label', 'settingsTheme');
   setText('settings-preferences-item', 'settingsPreferences');
+  setText('access-kicker', 'accessKicker');
+  setText('access-username-label', 'accessUsername');
+  setText('access-password-label', 'accessPassword');
   setText('chat-empty-initial', 'chatEmpty');
   setText('education-chat-empty', 'educationChatEmpty');
   setText('view-day-btn-panel', 'planningDay');
@@ -1101,6 +1232,8 @@ function applyTranslations() {
   const avatarPreview = document.getElementById('profile-photo-preview');
   if (avatarPreview) avatarPreview.alt = t('avatarPreviewAlt');
   if (profilePhotoLightboxImage) profilePhotoLightboxImage.alt = t('avatarPreviewAlt');
+  updateAccessScreenCopy();
+  updateAccessModeUi();
   updateFloatingPrimaryButton();
   renderEducationComposerState();
   setPanelState('idle');
@@ -1129,6 +1262,324 @@ function applyTranslations() {
 function applyLanguage(languageValue) {
   currentLanguage = normalizeAppLanguage(languageValue);
   applyTranslations();
+}
+
+function normalizeLocalAccessUsername(username = '') {
+  return String(username || '').trim().replace(/\s+/g, ' ');
+}
+
+function getDefaultGuestProfile() {
+  return {
+    firstName: '',
+    email: '',
+    phone: '',
+    language: currentLanguage,
+    accountType: 'Guest',
+    photo: ''
+  };
+}
+
+function getRuntimeProfileData(options = {}) {
+  if (accessState.mode === 'guest') {
+    return getDefaultGuestProfile();
+  }
+
+  return collectProfileData(options);
+}
+
+function loadLocalAccessAccount() {
+  try {
+    const rawAccount = window.localStorage.getItem(localAccessAccountStorageKey);
+    if (!rawAccount) return null;
+
+    const parsedAccount = JSON.parse(rawAccount);
+    if (!parsedAccount || typeof parsedAccount !== 'object') return null;
+
+    const username = normalizeLocalAccessUsername(parsedAccount.username);
+    const passwordHash = typeof parsedAccount.passwordHash === 'string' ? parsedAccount.passwordHash : '';
+    const loginKey = typeof parsedAccount.loginKey === 'string'
+      ? parsedAccount.loginKey
+      : normalizeLocalAccessUsername(parsedAccount.username).toLowerCase();
+
+    if (!username || !passwordHash || !loginKey) return null;
+
+    return {
+      username,
+      loginKey,
+      passwordHash,
+      createdAt: typeof parsedAccount.createdAt === 'number' ? parsedAccount.createdAt : Date.now()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalAccessAccount(account) {
+  window.localStorage.setItem(localAccessAccountStorageKey, JSON.stringify(account));
+}
+
+function loadLocalAccessSession() {
+  try {
+    const rawSession = window.localStorage.getItem(localAccessSessionStorageKey);
+    if (!rawSession) return null;
+
+    const parsedSession = JSON.parse(rawSession);
+    if (!parsedSession || typeof parsedSession !== 'object') return null;
+
+    if (parsedSession.mode === 'guest') {
+      return { mode: 'guest' };
+    }
+
+    if (parsedSession.mode === 'account' && typeof parsedSession.username === 'string') {
+      return {
+        mode: 'account',
+        username: normalizeLocalAccessUsername(parsedSession.username)
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalAccessSession(session) {
+  window.localStorage.setItem(localAccessSessionStorageKey, JSON.stringify(session));
+}
+
+function clearLocalAccessSession() {
+  window.localStorage.removeItem(localAccessSessionStorageKey);
+}
+
+function hasLocalAccessAccount() {
+  return Boolean(loadLocalAccessAccount());
+}
+
+function isGuestMode() {
+  return accessState.mode === 'guest';
+}
+
+function isAccountMode() {
+  return accessState.mode === 'account';
+}
+
+async function hashLocalAccessPassword(username, password) {
+  const normalizedUsername = normalizeLocalAccessUsername(username).toLowerCase();
+  const normalizedPassword = String(password || '');
+  const payload = `milo-local-access::${normalizedUsername}::${normalizedPassword}`;
+  const encoder = new TextEncoder();
+
+  if (window.crypto?.subtle) {
+    const digest = await window.crypto.subtle.digest('SHA-256', encoder.encode(payload));
+    return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  return btoa(unescape(encodeURIComponent(payload)));
+}
+
+function resetConversationState() {
+  chatHistory = [];
+  educationChatHistory = [];
+  renderChatHistory();
+  renderEducationChatHistory();
+}
+
+function updateAccessScreenCopy() {
+  const hasAccount = accessState.hasLocalAccount || hasLocalAccessAccount();
+
+  if (accessBadge) accessBadge.textContent = t('accessBadge');
+  if (accessTitle) accessTitle.textContent = t(hasAccount ? 'accessTitleLogin' : 'accessTitleCreate');
+  if (accessCopy) accessCopy.textContent = t(hasAccount ? 'accessCopyLogin' : 'accessCopyCreate');
+  if (accessUsernameLabel) accessUsernameLabel.textContent = t('accessUsername');
+  if (accessPasswordLabel) accessPasswordLabel.textContent = t('accessPassword');
+  if (accessUsernameInput) accessUsernameInput.placeholder = t(hasAccount ? 'accessUsernamePlaceholderLogin' : 'accessUsernamePlaceholderCreate');
+  if (accessPasswordInput) accessPasswordInput.placeholder = t(hasAccount ? 'accessPasswordPlaceholderLogin' : 'accessPasswordPlaceholderCreate');
+  if (accessPrimaryButton) accessPrimaryButton.textContent = t(hasAccount ? 'accessPrimaryLogin' : 'accessPrimaryCreate');
+  if (accessGuestButton) accessGuestButton.textContent = t('accessGuest');
+  if (accessFootnote) accessFootnote.textContent = t('accessFootnote');
+  if (accessPasswordToggle) {
+    const label = t(isAccessPasswordVisible ? 'accessPasswordHide' : 'accessPasswordShow');
+    accessPasswordToggle.setAttribute('aria-label', label);
+    accessPasswordToggle.setAttribute('title', label);
+  }
+  if (settingsLogoutItem) {
+    settingsLogoutItem.textContent = isGuestMode() ? t('settingsExitGuest') : t('settingsLogout');
+  }
+}
+
+function setAccessError(message = '') {
+  if (!accessError) return;
+  accessError.textContent = message;
+}
+
+function setAccessPasswordVisibility(visible) {
+  isAccessPasswordVisible = Boolean(visible);
+  if (accessPasswordInput) {
+    accessPasswordInput.type = isAccessPasswordVisible ? 'text' : 'password';
+  }
+
+  if (accessPasswordToggleIcon) {
+    accessPasswordToggleIcon.innerHTML = isAccessPasswordVisible
+      ? '<path d="M3 3l18 18"/><path d="M10.58 10.58A2 2 0 0 0 12 16c3.27 0 6.06-1.94 8-4-1-1.37-2.15-2.57-3.48-3.45"/><path d="M6.23 6.23C4.4 7.42 3 9.08 2 12c1.94 2.06 4.73 4 10 4 1.12 0 2.16-.12 3.12-.35"/><path d="M14.12 14.12A3 3 0 0 1 9.88 9.88"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c5.27 0 8.06 1.94 10 4-1.02 1.09-2.17 2.06-3.46 2.84"/>'
+      : '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>';
+  }
+
+  updateAccessScreenCopy();
+}
+
+function updateAccessModeUi() {
+  const isLocked = accessState.mode === 'locked';
+
+  if (accessScreen) {
+    accessScreen.classList.toggle('open', isLocked);
+  }
+
+  if (bottomNav) {
+    bottomNav.style.display = isLocked ? 'none' : 'flex';
+  }
+
+  if (miloBtnWrap) {
+    miloBtnWrap.style.display = isLocked ? 'none' : 'block';
+  }
+
+  if (settingsPreferencesItem) {
+    settingsPreferencesItem.style.display = isAccountMode() ? 'block' : 'none';
+  }
+
+  if (settingsLogoutItem) {
+    settingsLogoutItem.style.display = isLocked ? 'none' : 'block';
+  }
+
+  avatarPageTriggers.forEach((trigger) => {
+    trigger.style.display = isAccountMode() ? 'flex' : 'none';
+  });
+
+  if (navPlanningItem) navPlanningItem.style.display = isGuestMode() ? 'none' : 'flex';
+  if (navProgressItem) navProgressItem.style.display = isGuestMode() ? 'none' : 'flex';
+  if (navHomeItem) navHomeItem.style.display = isLocked ? 'none' : 'flex';
+  if (navEducationItem) navEducationItem.style.display = isLocked ? 'none' : 'flex';
+
+  updateAccessScreenCopy();
+}
+
+function syncAccessStateFromStorage() {
+  const account = loadLocalAccessAccount();
+  const session = loadLocalAccessSession();
+
+  accessState.hasLocalAccount = Boolean(account);
+  accessState.username = '';
+  accessState.mode = 'locked';
+
+  if (session?.mode === 'guest') {
+    accessState.mode = 'guest';
+    return;
+  }
+
+  if (session?.mode === 'account' && account && session.username === account.username) {
+    accessState.mode = 'account';
+    accessState.username = account.username;
+  }
+}
+
+function activateAccountMode(username, { showToastMessage = true } = {}) {
+  accessState.mode = 'account';
+  accessState.username = normalizeLocalAccessUsername(username);
+  accessState.hasLocalAccount = true;
+  saveLocalAccessSession({ mode: 'account', username: accessState.username });
+  setAccessError('');
+  updateAccessModeUi();
+  closeSettingsMenu();
+  showHome();
+
+  if (showToastMessage) {
+    showToast(t('toastAccessLoggedIn'));
+  }
+}
+
+function activateGuestMode({ showToastMessage = true } = {}) {
+  accessState.mode = 'guest';
+  accessState.username = '';
+  accessState.hasLocalAccount = hasLocalAccessAccount();
+  saveLocalAccessSession({ mode: 'guest' });
+  resetConversationState();
+  setAccessError('');
+  updateAccessModeUi();
+  closeSettingsMenu();
+  showHome();
+
+  if (showToastMessage) {
+    showToast(t('toastGuestModeEnabled'));
+  }
+}
+
+function lockAccess() {
+  clearLocalAccessSession();
+  accessState.mode = 'locked';
+  accessState.username = '';
+  accessState.hasLocalAccount = hasLocalAccessAccount();
+  closeSettingsMenu();
+  closePanel();
+  document.getElementById('home-page').style.display = 'none';
+  document.getElementById('avatar-dev-page').style.display = 'none';
+  document.getElementById('education-page').style.display = 'none';
+  document.getElementById('personal-info-page').style.display = 'none';
+  resetConversationState();
+  if (accessPasswordInput) accessPasswordInput.value = '';
+  setAccessError('');
+  setAccessPasswordVisibility(false);
+  updateAccessModeUi();
+}
+
+async function submitLocalAccess() {
+  const username = normalizeLocalAccessUsername(accessUsernameInput?.value);
+  const password = accessPasswordInput?.value || '';
+  setAccessError('');
+
+  if (!username || !password) {
+    showToast(t('toastAccessMissingCredentials'));
+    return;
+  }
+
+  const existingAccount = loadLocalAccessAccount();
+
+  if (!existingAccount) {
+    const passwordHash = await hashLocalAccessPassword(username, password);
+    saveLocalAccessAccount({
+      username,
+      loginKey: username.toLowerCase(),
+      passwordHash,
+      createdAt: Date.now()
+    });
+
+    const currentProfile = loadProfileData();
+    if (!currentProfile.firstName || currentProfile.firstName === 'Maxim') {
+      const nextProfile = {
+        ...currentProfile,
+        firstName: username,
+        email: currentProfile.email === 'maxim@example.com' ? '' : currentProfile.email
+      };
+      applyProfileData(nextProfile);
+      window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
+      savedProfileSnapshot = profileDataToSnapshot(nextProfile);
+    }
+
+    if (accessPasswordInput) accessPasswordInput.value = '';
+    showToast(t('toastAccessCreated'));
+    activateAccountMode(username, { showToastMessage: false });
+    return;
+  }
+
+  const passwordHash = await hashLocalAccessPassword(username, password);
+  const matches = existingAccount.loginKey === username.toLowerCase() && existingAccount.passwordHash === passwordHash;
+
+  if (!matches) {
+    setAccessError(t('accessInlineInvalid'));
+    showToast(t('toastAccessInvalid'));
+    return;
+  }
+
+  if (accessPasswordInput) accessPasswordInput.value = '';
+  activateAccountMode(existingAccount.username);
 }
 
 function toggleSettingsMenu(event) {
@@ -1209,11 +1660,80 @@ loadEducationState();
 loadPlanningState();
 loadMonthlyPrimaryTasks();
 applyLanguage(initialProfileData.language);
+syncAccessStateFromStorage();
 updateProfileSaveState();
+
+if (accessState.mode === 'account' || accessState.mode === 'guest') {
+  updateAccessModeUi();
+  showHome();
+} else {
+  lockAccess();
+}
 
 avatarPageTriggers.forEach(trigger => {
   trigger.addEventListener('click', showPersonalInfo);
 });
+
+if (settingsPreferencesItem) {
+  settingsPreferencesItem.addEventListener('click', () => {
+    closeSettingsMenu();
+    showPersonalInfo();
+  });
+}
+
+if (settingsLogoutItem) {
+  settingsLogoutItem.addEventListener('click', () => {
+    lockAccess();
+  });
+}
+
+if (accessPrimaryButton) {
+  accessPrimaryButton.addEventListener('click', () => {
+    submitLocalAccess();
+  });
+}
+
+if (accessGuestButton) {
+  accessGuestButton.addEventListener('click', () => {
+    activateGuestMode();
+  });
+}
+
+if (accessPasswordToggle) {
+  accessPasswordToggle.addEventListener('click', () => {
+    setAccessPasswordVisibility(!isAccessPasswordVisible);
+  });
+}
+
+if (accessUsernameInput) {
+  accessUsernameInput.addEventListener('input', () => {
+    setAccessError('');
+  });
+}
+
+if (accessPasswordInput) {
+  accessPasswordInput.addEventListener('input', () => {
+    setAccessError('');
+  });
+}
+
+if (accessPasswordInput) {
+  accessPasswordInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submitLocalAccess();
+    }
+  });
+}
+
+if (accessUsernameInput) {
+  accessUsernameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submitLocalAccess();
+    }
+  });
+}
 
 if (profilePhotoButton && profilePhotoInput) {
   profilePhotoButton.addEventListener('click', () => profilePhotoInput.click());
@@ -1362,6 +1882,7 @@ function closePanel() {
 }
 
 function showHome() {
+  if (accessState.mode === 'locked') return;
   closePanel();
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 0));
   document.getElementById('home-page').style.display = 'block';
@@ -1374,6 +1895,7 @@ function showHome() {
 }
 
 function showEducation() {
+  if (accessState.mode === 'locked') return;
   closePanel();
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 2));
   document.getElementById('home-page').style.display = 'none';
@@ -1385,6 +1907,11 @@ function showEducation() {
 }
 
 function showPersonalInfo() {
+  if (isGuestMode()) {
+    showToast(t('toastGuestProfileUnavailable'));
+    return;
+  }
+
   closePanel();
   closeSettingsMenu();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1397,6 +1924,11 @@ function showPersonalInfo() {
 }
 
 function showAvatarDevPage() {
+  if (isGuestMode()) {
+    showToast(t('toastGuestPlanningUnavailable'));
+    return;
+  }
+
   closePanel();
   closeSettingsMenu();
   document.querySelectorAll('.nav-item').forEach((n, i) => n.classList.toggle('active', i === 3));
@@ -1578,6 +2110,12 @@ function initializeProfileForm() {
 }
 
 function openPanelSection(section) {
+  if (accessState.mode === 'locked') return;
+  if (isGuestMode() && section === 'planning') {
+    showToast(t('toastGuestPlanningUnavailable'));
+    return;
+  }
+
   currentPanelSection = section;
   document.querySelectorAll('.panel-section').forEach(s => s.style.display = 'none');
   
@@ -2499,7 +3037,7 @@ function getAgentRequestPayload(message) {
     history: chatHistory,
     language: currentLanguage,
     sessionId: getChatSessionId(),
-    profile: collectProfileData({ includePhoto: false }),
+    profile: getRuntimeProfileData({ includePhoto: false }),
     planning: {
       view: planningState.view,
       currentDate: planningState.currentDate.toISOString(),
@@ -2759,12 +3297,42 @@ function renderDailyNewsCard() {
   return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(entry.title)}</div><div class="card-sub">${escapeHtml(entry.sub)}</div><div class="home-news-meta"><span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span><span class="home-monthly-subtle">${escapeHtml(getNewsThemeLabel(dailyNewsTheme))} · ${escapeHtml(formattedDate)}</span></div></div></div>`;
 }
 
+function renderGuestHomeCard() {
+  return `<div class="card home-news-card"><div class="card-dot home-news-dot"></div><div class="card-body"><div class="card-title">${escapeHtml(t('guestHomeTitle'))}</div><div class="card-sub">${escapeHtml(t('guestHomeSub'))}</div><div class="home-news-meta"><span class="badge badge-purple">${escapeHtml(t('guestHomeChatHint'))}</span><span class="home-monthly-subtle">${escapeHtml(t('guestHomeEducationHint'))}</span></div></div></div>`;
+}
+
 function renderHomePage() {
+  const dailyNewsLabel = document.getElementById('home-daily-news-label');
+  const todayLabel = document.getElementById('home-today-label');
+  const tomorrowLabel = document.getElementById('home-tomorrow-label');
+  const monthlyLabel = document.getElementById('home-monthly-primary-label');
   const dailyNewsList = document.getElementById('home-daily-news-list');
   const todayList = document.getElementById('home-today-list');
   const tomorrowList = document.getElementById('home-tomorrow-list');
   const monthlyList = document.getElementById('home-monthly-primary-list');
   if (!dailyNewsList || !todayList || !tomorrowList || !monthlyList) return;
+
+  if (isGuestMode()) {
+    if (dailyNewsLabel) dailyNewsLabel.textContent = t('guestHomeLabel');
+    if (todayLabel) todayLabel.style.display = 'none';
+    if (tomorrowLabel) tomorrowLabel.style.display = 'none';
+    if (monthlyLabel) monthlyLabel.style.display = 'none';
+    todayList.style.display = 'none';
+    tomorrowList.style.display = 'none';
+    monthlyList.style.display = 'none';
+    dailyNewsList.style.display = 'flex';
+    dailyNewsList.innerHTML = renderGuestHomeCard();
+    return;
+  }
+
+  if (dailyNewsLabel) dailyNewsLabel.textContent = t('homeDailyNews');
+  if (todayLabel) todayLabel.style.display = '';
+  if (tomorrowLabel) tomorrowLabel.style.display = '';
+  if (monthlyLabel) monthlyLabel.style.display = '';
+  todayList.style.display = '';
+  tomorrowList.style.display = '';
+  monthlyList.style.display = '';
+  dailyNewsList.style.display = '';
 
   const today = new Date();
   const tomorrow = new Date(today);
@@ -2904,7 +3472,7 @@ function getEducationAgentRequestPayload(message) {
     history: educationChatHistory,
     language: currentLanguage,
     sessionId: `${getChatSessionId()}-education`,
-    profile: collectProfileData({ includePhoto: false }),
+    profile: getRuntimeProfileData({ includePhoto: false }),
     studyContext: getEducationStudyContext(message),
     agent: 'education'
   };

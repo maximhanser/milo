@@ -258,6 +258,176 @@
   .toast-text { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1; }
   .toast-close { font-size: 16px; color: var(--text3); cursor: pointer; flex-shrink: 0; }
 
+  .access-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 120;
+    background:
+      radial-gradient(circle at top, rgba(124,109,240,0.22), transparent 36%),
+      linear-gradient(180deg, rgba(14,14,18,0.98), rgba(22,22,29,0.98));
+    display: none;
+    align-items: stretch;
+    justify-content: center;
+    padding: 26px 18px 24px;
+  }
+
+  .access-screen.open {
+    display: flex;
+  }
+
+  .access-shell {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  .access-brand {
+    text-align: center;
+  }
+
+  .access-kicker {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .access-card {
+    background: rgba(22,22,29,0.92);
+    border: 0.5px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 22px 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+  }
+
+  .access-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #b7aff8;
+    background: rgba(124,109,240,0.14);
+    border: 0.5px solid rgba(124,109,240,0.22);
+    padding: 7px 10px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+
+  .access-title {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .access-copy {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text2);
+    margin-bottom: 18px;
+  }
+
+  .access-field {
+    margin-bottom: 12px;
+  }
+
+  .access-field-label {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .access-field-input {
+    width: 100%;
+    border: 0.5px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 14px 14px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .access-field-input::placeholder {
+    color: var(--text3);
+  }
+
+  .access-password-row {
+    position: relative;
+  }
+
+  .access-password-row .access-field-input {
+    padding-right: 52px;
+  }
+
+  .access-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .access-password-toggle:active {
+    background: rgba(255,255,255,0.06);
+  }
+
+  .access-error {
+    min-height: 18px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #ff7f8f;
+    line-height: 1.45;
+  }
+
+  .access-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .access-primary-btn,
+  .access-secondary-btn {
+    width: 100%;
+    border-radius: 16px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+  }
+
+  .access-primary-btn {
+    background: var(--accent);
+    color: white;
+  }
+
+  .access-secondary-btn {
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    border: 0.5px solid var(--border);
+  }
+
+  .access-footnote {
+    margin-top: 14px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text3);
+  }
+
   /* Bottom nav */
   .bottom-nav {
     position: absolute;
@@ -1847,6 +2017,46 @@
     <div class="toast-close" onclick="hideToast()">×</div>
   </div>
 
+  <div class="access-screen" id="access-screen">
+    <div class="access-shell">
+      <div class="access-brand">
+        <div class="access-kicker" id="access-kicker">Milo local</div>
+        <div class="app-name">Mi<em>lo</em></div>
+      </div>
+      <div class="access-card">
+        <div class="access-badge" id="access-badge">Mémoire locale sur cet appareil</div>
+        <div class="access-title" id="access-title">Créer un espace local</div>
+        <div class="access-copy" id="access-copy">Ton identifiant et ta mémoire restent sur cet appareil. Aucun compte serveur n’est nécessaire.</div>
+
+        <div class="access-field">
+          <div class="access-field-label" id="access-username-label">Identifiant</div>
+          <input class="access-field-input" id="access-username" placeholder="Choisis un identifiant" autocomplete="username" />
+        </div>
+
+        <div class="access-field">
+          <div class="access-field-label" id="access-password-label">Mot de passe</div>
+          <div class="access-password-row">
+            <input class="access-field-input" id="access-password" type="password" placeholder="Choisis un mot de passe" autocomplete="current-password" />
+            <button class="access-password-toggle" id="access-password-toggle" type="button" aria-label="Afficher le mot de passe" title="Afficher le mot de passe">
+              <svg id="access-password-toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="access-error" id="access-error"></div>
+        </div>
+
+        <div class="access-actions">
+          <button class="access-primary-btn" id="access-primary-btn" type="button">Créer mon espace local</button>
+          <button class="access-secondary-btn" id="access-guest-btn" type="button">Continuer sans compte</button>
+        </div>
+
+        <div class="access-footnote" id="access-footnote">Le mode sans compte donne uniquement accès au chat Milo IA et à Éducation.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- PAGE: Home -->
   <div id="home-page">
   <div class="status-bar">
@@ -2035,14 +2245,14 @@
 
   <!-- Bottom nav -->
   <div class="bottom-nav">
-    <div class="nav-item active" onclick="showHome()">
+    <div class="nav-item active" id="nav-home-item" onclick="showHome()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <path d="M2 8.5L10 2l8 6.5V18a1 1 0 01-1 1H3a1 1 0 01-1-1V8.5z"/>
       </svg>
       <span id="nav-home-label">Accueil</span>
     </div>
 
-    <div class="nav-item" onclick="openPanelSection('planning')">
+    <div class="nav-item" id="nav-planning-item" onclick="openPanelSection('planning')">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <rect x="2" y="3" width="16" height="15" rx="3"/>
         <line x1="2" y1="8" x2="18" y2="8"/>
@@ -2054,7 +2264,7 @@
 
     <div class="nav-spacer"></div>
 
-    <div class="nav-item" onclick="showEducation()">
+    <div class="nav-item" id="nav-education-item" onclick="showEducation()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <path d="M4 4h12v12H4z"/>
         <path d="M8 8h4"/>
@@ -2063,7 +2273,7 @@
       <span id="nav-education-label">Éducation</span>
     </div>
 
-    <div class="nav-item" onclick="showAvatarDevPage()">
+    <div class="nav-item" id="nav-progress-item" onclick="showAvatarDevPage()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="10" cy="10" r="6.5"/>
         <circle cx="10" cy="10" r="3.25"/>
@@ -2157,6 +2367,7 @@
     </div>
 
     <button class="settings-menu-item" id="settings-preferences-item">Préférences</button>
+    <button class="settings-menu-item" id="settings-logout-item">Déconnexion</button>
   </div>
 
   <!-- Panel -->
