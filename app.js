@@ -2788,10 +2788,28 @@ function renderHomePage() {
   maybeRefreshDailyNews();
 }
 
+function focusPlanningDayState(dateKey, selectedEventId = null) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return false;
+
+  planningState.currentDate = new Date(year, month - 1, day);
+  planningState.view = 'day';
+  const dayEvents = getActivePlanningEvents()
+    .filter(event => event.date === dateKey)
+    .sort((a, b) => a.time.localeCompare(b.time));
+
+  planningState.selectedEventId = dayEvents.some((event) => event.id === selectedEventId)
+    ? selectedEventId
+    : dayEvents[0]?.id || null;
+
+  return true;
+}
+
 function openPlanningMonth(monthKey, taskTitle = '') {
   const matchingEvent = findMonthlyTaskPlanningEvent(monthKey, taskTitle);
   if (matchingEvent) {
-    openPlanningDay(matchingEvent.date, matchingEvent.id);
+    focusPlanningDayState(matchingEvent.date, matchingEvent.id);
+    openPanelSection('planning');
     return;
   }
 
@@ -3215,7 +3233,7 @@ function openPlanningEvent(eventId) {
   const existingEvent = getActivePlanningEvents().find((event) => event.id === eventId);
   if (!existingEvent) return false;
 
-  openPlanningDay(existingEvent.date, existingEvent.id);
+  focusPlanningDayState(existingEvent.date, existingEvent.id);
   return true;
 }
 
@@ -3238,17 +3256,7 @@ function findMonthlyTaskPlanningEvent(monthKey, title) {
 }
 
 function openPlanningDay(dateKey, selectedEventId = null) {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  if (!year || !month || !day) return;
-
-  planningState.currentDate = new Date(year, month - 1, day);
-  planningState.view = 'day';
-  const dayEvents = getActivePlanningEvents()
-    .filter(event => event.date === dateKey)
-    .sort((a, b) => a.time.localeCompare(b.time));
-  planningState.selectedEventId = dayEvents.some((event) => event.id === selectedEventId)
-    ? selectedEventId
-    : dayEvents[0]?.id || null;
+  if (!focusPlanningDayState(dateKey, selectedEventId)) return;
   renderPlanningPanel();
 }
 
@@ -3817,7 +3825,7 @@ document.addEventListener('click', (event) => {
   if (homeDayCard) {
     const targetEventId = Number(homeDayCard.dataset.homeEventId);
     if (!openPlanningEvent(targetEventId)) {
-      openPlanningDay(homeDayCard.dataset.homeDateKey);
+      focusPlanningDayState(homeDayCard.dataset.homeDateKey);
     }
     openPanelSection('planning');
     return;
