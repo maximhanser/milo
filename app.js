@@ -80,6 +80,9 @@
     const settingsMenuClose = document.getElementById('settings-menu-close');
     const settingsPreferencesItem = document.getElementById('settings-preferences-item');
     const settingsLogoutItem = document.getElementById('settings-logout-item');
+    const settingsTestNotificationItem = document.getElementById('settings-test-notification-item');
+    const notificationsSettingRow = document.getElementById('notifications-setting-row');
+    const notificationsToggle = document.getElementById('notifications-toggle');
     const themeToggle = document.getElementById('theme-toggle');
     const homeDailyNewsList = document.getElementById('home-daily-news-list');
     const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
@@ -138,6 +141,9 @@
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
     let dailyNewsTheme = 'none';
+    let browserNotificationsEnabled = false;
+    let browserNotificationIntervalId = null;
+    let sentBrowserNotificationKeys = new Set();
     let accessState = {
       mode: 'locked',
       username: '',
@@ -263,6 +269,8 @@
         importedDocumentMeta: '{count} caractères',
         settingsTitle: 'Paramètres',
         settingsTheme: 'Thème',
+        settingsNotifications: 'Notifications navigateur',
+        settingsTestNotification: 'Tester les notifications',
         settingsDailyNewsTheme: 'Thème Daily News',
         settingsPreferences: 'Préférences',
         settingsLogout: 'Déconnexion',
@@ -298,6 +306,11 @@
         toastGuestModeEnabled: 'Mode sans compte activé.',
         toastGuestProfileUnavailable: 'Le profil n’est pas disponible en mode sans compte.',
         toastGuestPlanningUnavailable: 'Le planning n’est pas disponible en mode sans compte.',
+        toastNotificationsUnsupported: 'Les notifications navigateur ne sont pas disponibles ici.',
+        toastNotificationsDenied: 'La permission de notifications a été refusée.',
+        toastNotificationsEnabled: 'Notifications navigateur activées.',
+        toastNotificationsDisabled: 'Notifications navigateur désactivées.',
+        toastNotificationsFallback: 'Les rappels Milo s’afficheront dans l’app tant qu’elle reste ouverte.',
         newsThemeNone: 'Aucun',
         newsThemeMusic: 'Musique',
         newsThemePolitics: 'Politique',
@@ -457,6 +470,8 @@
         importedDocumentMeta: '{count} characters',
         settingsTitle: 'Settings',
         settingsTheme: 'Theme',
+        settingsNotifications: 'Browser notifications',
+        settingsTestNotification: 'Test notifications',
         settingsDailyNewsTheme: 'Daily News theme',
         settingsPreferences: 'Preferences',
         settingsLogout: 'Log out',
@@ -492,6 +507,11 @@
         toastGuestModeEnabled: 'No-account mode enabled.',
         toastGuestProfileUnavailable: 'Profile is not available in no-account mode.',
         toastGuestPlanningUnavailable: 'Planning is not available in no-account mode.',
+        toastNotificationsUnsupported: 'Browser notifications are not available here.',
+        toastNotificationsDenied: 'Notification permission was denied.',
+        toastNotificationsEnabled: 'Browser notifications enabled.',
+        toastNotificationsDisabled: 'Browser notifications disabled.',
+        toastNotificationsFallback: 'Milo reminders will appear inside the app while it stays open.',
         newsThemeNone: 'None',
         newsThemeMusic: 'Music',
         newsThemePolitics: 'Politics',
@@ -651,6 +671,8 @@
         importedDocumentMeta: '{count} caracteres',
         settingsTitle: 'Ajustes',
         settingsTheme: 'Tema',
+        settingsNotifications: 'Notificaciones del navegador',
+        settingsTestNotification: 'Probar notificaciones',
         settingsDailyNewsTheme: 'Tema Daily News',
         settingsPreferences: 'Preferencias',
         settingsLogout: 'Cerrar sesión',
@@ -686,6 +708,11 @@
         toastGuestModeEnabled: 'Modo sin cuenta activado.',
         toastGuestProfileUnavailable: 'El perfil no esta disponible en modo sin cuenta.',
         toastGuestPlanningUnavailable: 'La planificacion no esta disponible en modo sin cuenta.',
+        toastNotificationsUnsupported: 'Las notificaciones del navegador no estan disponibles aqui.',
+        toastNotificationsDenied: 'Se rechazo el permiso de notificaciones.',
+        toastNotificationsEnabled: 'Notificaciones del navegador activadas.',
+        toastNotificationsDisabled: 'Notificaciones del navegador desactivadas.',
+        toastNotificationsFallback: 'Los recordatorios de Milo apareceran dentro de la app mientras siga abierta.',
         newsThemeNone: 'Ninguno',
         newsThemeMusic: 'Musica',
         newsThemePolitics: 'Politica',
@@ -824,7 +851,8 @@ function normalizeDailyNewsTheme(value) {
 
 function getDefaultPreferences() {
   return {
-    dailyNewsTheme: 'economy'
+    dailyNewsTheme: 'economy',
+    browserNotificationsEnabled: false
   };
 }
 
@@ -839,7 +867,8 @@ function loadPreferences() {
     return {
       ...defaults,
       ...parsedPreferences,
-      dailyNewsTheme: normalizeDailyNewsTheme(parsedPreferences.dailyNewsTheme)
+      dailyNewsTheme: normalizeDailyNewsTheme(parsedPreferences.dailyNewsTheme),
+      browserNotificationsEnabled: Boolean(parsedPreferences.browserNotificationsEnabled)
     };
   } catch {
     return defaults;
@@ -848,12 +877,14 @@ function loadPreferences() {
 
 function persistPreferences() {
   window.localStorage.setItem(preferencesStorageKey, JSON.stringify({
-    dailyNewsTheme
+    dailyNewsTheme,
+    browserNotificationsEnabled
   }));
 }
 
 function applyPreferences(preferences) {
   dailyNewsTheme = normalizeDailyNewsTheme(preferences?.dailyNewsTheme);
+  browserNotificationsEnabled = Boolean(preferences?.browserNotificationsEnabled);
 }
 
 function getNewsThemeLabel(theme) {
@@ -1187,6 +1218,8 @@ function applyTranslations() {
   setText('education-clear-files-btn', 'educationClearFiles');
   setText('settings-menu-title', 'settingsTitle');
   setText('theme-label', 'settingsTheme');
+  setText('notifications-label', 'settingsNotifications');
+  setText('settings-test-notification-item', 'settingsTestNotification');
   setText('settings-preferences-item', 'settingsPreferences');
   setText('access-kicker', 'accessKicker');
   setText('access-username-label', 'accessUsername');
@@ -1450,6 +1483,10 @@ function updateAccessModeUi() {
     settingsLogoutItem.style.display = isLocked ? 'none' : 'block';
   }
 
+  if (notificationsSettingRow) {
+    notificationsSettingRow.style.display = isAccountMode() ? 'flex' : 'none';
+  }
+
   avatarPageTriggers.forEach((trigger) => {
     trigger.style.display = isAccountMode() ? 'flex' : 'none';
   });
@@ -1460,6 +1497,150 @@ function updateAccessModeUi() {
   if (navEducationItem) navEducationItem.style.display = isLocked ? 'none' : 'flex';
 
   updateAccessScreenCopy();
+}
+
+function areBrowserNotificationsSupported() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+function updateBrowserNotificationsUi() {
+  if (!notificationsToggle) return;
+  notificationsToggle.classList.toggle('on', browserNotificationsEnabled);
+}
+
+function syncBrowserNotificationAvailability() {
+  const browserNotificationsAvailable = areBrowserNotificationsSupported() && Notification.permission === 'granted';
+  if (browserNotificationsEnabled && !browserNotificationsAvailable) {
+    browserNotificationsEnabled = false;
+    persistPreferences();
+  }
+  updateBrowserNotificationsUi();
+  return browserNotificationsAvailable;
+}
+
+function stopBrowserNotificationChecks() {
+  if (browserNotificationIntervalId !== null) {
+    window.clearInterval(browserNotificationIntervalId);
+    browserNotificationIntervalId = null;
+  }
+}
+
+function getPlanningEventStartDate(event) {
+  const eventDate = parseDateKeyString(event?.date || '');
+  const timeParts = parseTimeParts(event?.time || '');
+  if (!eventDate || !timeParts) return null;
+
+  eventDate.setHours(timeParts.hours, timeParts.minutes, 0, 0);
+  return eventDate;
+}
+
+function pruneSentBrowserNotificationKeys() {
+  const threshold = Date.now() - (24 * 60 * 60 * 1000);
+  sentBrowserNotificationKeys = new Set(
+    [...sentBrowserNotificationKeys].filter((entry) => {
+      const timestamp = Number(entry.split('::')[1] || 0);
+      return Number.isFinite(timestamp) && timestamp >= threshold;
+    })
+  );
+}
+
+function maybeSendBrowserNotifications() {
+  if (!browserNotificationsEnabled || !areBrowserNotificationsSupported() || Notification.permission !== 'granted') {
+    return;
+  }
+
+  const now = Date.now();
+  const leadTimeMs = 10 * 60 * 1000;
+  const gracePeriodMs = 60 * 1000;
+  pruneSentBrowserNotificationKeys();
+
+  getActivePlanningEvents().forEach((event) => {
+    const startDate = getPlanningEventStartDate(event);
+    if (!startDate) return;
+
+    const startTime = startDate.getTime();
+    const msUntilStart = startTime - now;
+    if (msUntilStart > leadTimeMs || msUntilStart < -gracePeriodMs) {
+      return;
+    }
+
+    const notificationKey = `${event.id}::${startTime}`;
+    if (sentBrowserNotificationKeys.has(notificationKey)) {
+      return;
+    }
+
+    const minutesUntilStart = Math.max(0, Math.round(msUntilStart / 60000));
+    const body = minutesUntilStart > 1
+      ? `${event.title || t('untitledTask')} commence dans ${minutesUntilStart} minutes.`
+      : minutesUntilStart === 1
+        ? `${event.title || t('untitledTask')} commence dans 1 minute.`
+        : `${event.title || t('untitledTask')} commence maintenant.`;
+
+    deliverBrowserReminderNotification({
+      title: 'Milo',
+      body,
+      notificationKey
+    });
+
+    sentBrowserNotificationKeys.add(notificationKey);
+  });
+}
+
+function startBrowserNotificationChecks() {
+  stopBrowserNotificationChecks();
+
+  const browserNotificationsAvailable = syncBrowserNotificationAvailability();
+
+  if (!browserNotificationsEnabled || !isAccountMode() || !browserNotificationsAvailable) {
+    return;
+  }
+
+  maybeSendBrowserNotifications();
+  browserNotificationIntervalId = window.setInterval(maybeSendBrowserNotifications, 30000);
+}
+
+function deliverBrowserReminderNotification({ title, body, notificationKey }) {
+  new Notification(title, {
+    body,
+    tag: notificationKey,
+    silent: false
+  });
+}
+
+async function setBrowserNotificationsEnabled(nextValue, { showFeedback = true } = {}) {
+  const shouldEnable = Boolean(nextValue);
+
+  if (shouldEnable) {
+    if (!areBrowserNotificationsSupported()) {
+      browserNotificationsEnabled = false;
+      updateBrowserNotificationsUi();
+      persistPreferences();
+      if (showFeedback) showToast(t('toastNotificationsUnsupported'));
+      return false;
+    }
+
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        browserNotificationsEnabled = false;
+        updateBrowserNotificationsUi();
+        persistPreferences();
+        if (showFeedback) showToast(t('toastNotificationsDenied'));
+        return false;
+      }
+    }
+  }
+
+  browserNotificationsEnabled = shouldEnable;
+  updateBrowserNotificationsUi();
+  persistPreferences();
+  startBrowserNotificationChecks();
+
+  if (showFeedback) {
+    showToast(t(shouldEnable ? 'toastNotificationsEnabled' : 'toastNotificationsDisabled'));
+  }
+
+  return true;
 }
 
 function syncAccessStateFromStorage() {
@@ -1488,6 +1669,7 @@ function activateAccountMode(username, { showToastMessage = true } = {}) {
   saveLocalAccessSession({ mode: 'account', username: accessState.username });
   setAccessError('');
   updateAccessModeUi();
+  startBrowserNotificationChecks();
   closeSettingsMenu();
   showHome();
 
@@ -1504,6 +1686,7 @@ function activateGuestMode({ showToastMessage = true } = {}) {
   resetConversationState();
   setAccessError('');
   updateAccessModeUi();
+  stopBrowserNotificationChecks();
   closeSettingsMenu();
   showHome();
 
@@ -1513,6 +1696,7 @@ function activateGuestMode({ showToastMessage = true } = {}) {
 }
 
 function lockAccess() {
+  stopBrowserNotificationChecks();
   clearLocalAccessSession();
   accessState.mode = 'locked';
   accessState.username = '';
@@ -1634,6 +1818,33 @@ if (themeToggle) {
   });
 }
 
+if (notificationsToggle) {
+  notificationsToggle.addEventListener('click', () => {
+    if (!isAccountMode()) return;
+    setBrowserNotificationsEnabled(!browserNotificationsEnabled);
+  });
+}
+
+if (settingsTestNotificationItem) {
+  settingsTestNotificationItem.addEventListener('click', async () => {
+    if (!isAccountMode()) return;
+
+    const enabled = browserNotificationsEnabled || await setBrowserNotificationsEnabled(true, { showFeedback: false });
+    if (!enabled) return;
+
+    deliverBrowserReminderNotification({
+      title: 'Milo',
+      body: currentLanguage === 'en'
+        ? 'This is a browser notification test from Milo.'
+        : currentLanguage === 'es'
+          ? 'Esta es una prueba de notificacion del navegador de Milo.'
+          : 'Ceci est un test de notification navigateur de Milo.',
+      notificationKey: `test::${Date.now()}`
+    });
+    closeSettingsMenu();
+  });
+}
+
 if (homeDailyNewsList) {
   homeDailyNewsList.addEventListener('pointerdown', handleDailyNewsPointerDown);
   homeDailyNewsList.addEventListener('pointermove', handleDailyNewsPointerMove);
@@ -1651,6 +1862,7 @@ applyTheme(false);
 
 const initialPreferences = loadPreferences();
 applyPreferences(initialPreferences);
+syncBrowserNotificationAvailability();
 
 const initialProfileData = loadProfileData();
 applyProfileData(initialProfileData);
@@ -1666,8 +1878,19 @@ updateProfileSaveState();
 if (accessState.mode === 'account' || accessState.mode === 'guest') {
   updateAccessModeUi();
   showHome();
+  if (accessState.mode === 'account') {
+    startBrowserNotificationChecks();
+  }
 } else {
   lockAccess();
+}
+
+if (document.visibilityState) {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      startBrowserNotificationChecks();
+    }
+  });
 }
 
 avatarPageTriggers.forEach(trigger => {
@@ -3186,6 +3409,38 @@ function persistMonthlyPrimaryTasks() {
   window.localStorage.setItem(monthlyPrimaryTasksStorageKey, JSON.stringify(monthlyPrimaryTasks));
 }
 
+function getMonthlyPrimaryReminderCounts(events = planningState.events) {
+  return getActivePlanningEvents(events).reduce((counts, event) => {
+    const monthKey = getMonthKeyFromDateKey(event.date);
+    const canonicalTitle = getCanonicalTaskTitle(event.title);
+    if (!monthKey || !canonicalTitle) return counts;
+
+    const identity = getMonthlyTaskIdentity(monthKey, canonicalTitle);
+    counts.set(identity, (counts.get(identity) || 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function syncMonthlyPrimaryTaskReminderCounts() {
+  if (!monthlyPrimaryTasks.length) return;
+
+  const reminderCounts = getMonthlyPrimaryReminderCounts();
+  let hasChanges = false;
+
+  monthlyPrimaryTasks.forEach((task) => {
+    const identity = getMonthlyTaskIdentity(task.monthKey, task.title);
+    const nextReminderCount = reminderCounts.get(identity) || 0;
+    if (task.reminderCount !== nextReminderCount) {
+      task.reminderCount = nextReminderCount;
+      hasChanges = true;
+    }
+  });
+
+  if (hasChanges) {
+    persistMonthlyPrimaryTasks();
+  }
+}
+
 function findMonthlyPrimaryTask(monthKey, title) {
   const identity = getMonthlyTaskIdentity(monthKey, title);
   return monthlyPrimaryTasks.find(task => getMonthlyTaskIdentity(task.monthKey, task.title) === identity) || null;
@@ -3302,6 +3557,8 @@ function renderGuestHomeCard() {
 }
 
 function renderHomePage() {
+  syncMonthlyPrimaryTaskReminderCounts();
+
   const dailyNewsLabel = document.getElementById('home-daily-news-label');
   const todayLabel = document.getElementById('home-today-label');
   const tomorrowLabel = document.getElementById('home-tomorrow-label');
@@ -3346,7 +3603,7 @@ function renderHomePage() {
   const todayEvents = activeEvents.filter(event => event.date === todayKey).sort(sortByTime);
   const tomorrowEvents = activeEvents.filter(event => event.date === tomorrowKey).sort(sortByTime);
   const monthTasks = monthlyPrimaryTasks
-    .filter(task => task.monthKey === currentMonthKey)
+    .filter(task => task.monthKey === currentMonthKey && task.reminderCount > 0)
     .sort((left, right) => (right.reminderCount - left.reminderCount) || left.title.localeCompare(right.title));
 
   dailyNewsList.innerHTML = renderDailyNewsCard();
@@ -4318,6 +4575,9 @@ function sameDay(a, b) {
 function renderPlanningPanel() {
   ensurePlanningEventsStructure();
   persistPlanningState();
+  if (browserNotificationsEnabled && isAccountMode()) {
+    maybeSendBrowserNotifications();
+  }
   initializePlanningInteractions();
   renderHomePage();
   renderProgressPage();
