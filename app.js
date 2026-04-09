@@ -286,14 +286,14 @@
         educationPdfUnavailable: 'Le module PDF n\'est pas disponible pour le moment.',
         educationFilesToggleLabel: 'Ajouter des fichiers',
         educationDropzoneTitle: 'Dépose jusqu\'à 3 fichiers',
-        educationDropzoneHelp: 'TXT, MD, CSV ou JSON. Tu peux ensuite ajouter une consigne dans le chat.',
+        educationDropzoneHelp: 'TXT, MD, CSV, JSON ou PDF. Tu peux ensuite ajouter une consigne dans le chat.',
         educationFilesCount: '{count}/3 fichiers',
         educationFilesEmpty: 'Aucun fichier ajouté',
         educationClearFiles: 'Vider les fichiers',
         educationFilesLimit: 'Tu peux ajouter jusqu\'à 3 fichiers maximum.',
         educationPasteLabel: 'Texte de travail',
         educationSourcePlaceholder: 'Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz.',
-        educationDocumentsHelp: 'Importe un document texte ou colle un passage. Le chat IA d\'Éducation utilisera ce contenu comme base de travail.',
+        educationDocumentsHelp: 'Importe un document texte ou PDF, ou colle un passage. Le chat IA d\'Éducation utilisera ce contenu comme base de travail.',
         educationActionExplain: 'Aide',
         educationActionReformulate: 'Reformuler',
         educationActionSheet: 'Fiche',
@@ -327,7 +327,11 @@
         educationDownloadLatest: 'Télécharger la réponse PDF',
         clearText: 'Effacer le texte',
         educationNoSource: 'Ajoute un texte ou sélectionne un document avant de lancer une consigne d\'étude.',
-        unsupportedDocument: 'Importe un document texte (.txt, .md, .csv ou .json).',
+        unsupportedDocument: 'Importe un document pris en charge (.txt, .md, .csv, .json ou .pdf).',
+        educationDocumentImportFailed: 'Impossible d\'importer ce document.',
+        educationPdfImportUnavailable: 'Le module PDF n\'est pas prêt pour lire ce fichier.',
+        educationPdfImportFailed: 'Impossible de lire ce PDF.',
+        educationPdfImportEmpty: 'Ce PDF ne contient pas de texte exploitable.',
         importedDocumentMeta: '{count} caractères',
         settingsTitle: 'Paramètres',
         settingsTheme: 'Thème',
@@ -518,14 +522,14 @@
         educationPdfUnavailable: 'The PDF module is not available right now.',
         educationFilesToggleLabel: 'Add files',
         educationDropzoneTitle: 'Drop up to 3 files',
-        educationDropzoneHelp: 'TXT, MD, CSV or JSON. You can still add an instruction in chat afterwards.',
+        educationDropzoneHelp: 'TXT, MD, CSV, JSON or PDF. You can still add an instruction in chat afterwards.',
         educationFilesCount: '{count}/3 files',
         educationFilesEmpty: 'No file added',
         educationClearFiles: 'Clear files',
         educationFilesLimit: 'You can add up to 3 files maximum.',
         educationPasteLabel: 'Study text',
         educationSourcePlaceholder: 'Paste a lesson, chapter or excerpt here to create notes, rewrites and quizzes.',
-        educationDocumentsHelp: 'Import a text document or paste a passage. The Education AI chat will use this content as its study base.',
+        educationDocumentsHelp: 'Import a text document or PDF, or paste a passage. The Education AI chat will use this content as its study base.',
         educationActionExplain: 'Explain',
         educationActionReformulate: 'Rewrite',
         educationActionSheet: 'Study sheet',
@@ -559,7 +563,11 @@
         educationDownloadLatest: 'Download response PDF',
         clearText: 'Clear text',
         educationNoSource: 'Add text or select a document before asking for a study task.',
-        unsupportedDocument: 'Import a text document (.txt, .md, .csv or .json).',
+        unsupportedDocument: 'Import a supported document (.txt, .md, .csv, .json or .pdf).',
+        educationDocumentImportFailed: 'Unable to import this document.',
+        educationPdfImportUnavailable: 'The PDF module is not ready to read this file.',
+        educationPdfImportFailed: 'Unable to read this PDF.',
+        educationPdfImportEmpty: 'This PDF does not contain usable text.',
         importedDocumentMeta: '{count} characters',
         settingsTitle: 'Settings',
         settingsTheme: 'Theme',
@@ -750,14 +758,14 @@
         educationPdfUnavailable: 'El modulo PDF no esta disponible por ahora.',
         educationFilesToggleLabel: 'Agregar archivos',
         educationDropzoneTitle: 'Suelta hasta 3 archivos',
-        educationDropzoneHelp: 'TXT, MD, CSV o JSON. Luego puedes anadir una consigna en el chat.',
+        educationDropzoneHelp: 'TXT, MD, CSV, JSON o PDF. Luego puedes anadir una consigna en el chat.',
         educationFilesCount: '{count}/3 archivos',
         educationFilesEmpty: 'No se ha agregado ningun archivo',
         educationClearFiles: 'Vaciar archivos',
         educationFilesLimit: 'Puedes agregar hasta 3 archivos como maximo.',
         educationPasteLabel: 'Texto de estudio',
         educationSourcePlaceholder: 'Pega aqui una leccion, un capitulo o un extracto para crear fichas, reformulaciones y quizzes.',
-        educationDocumentsHelp: 'Importa un documento de texto o pega un pasaje. El chat IA de Educacion usara este contenido como base de trabajo.',
+        educationDocumentsHelp: 'Importa un documento de texto o PDF, o pega un pasaje. El chat IA de Educacion usara este contenido como base de trabajo.',
         educationActionExplain: 'Explicar',
         educationActionReformulate: 'Reformular',
         educationActionSheet: 'Ficha',
@@ -791,7 +799,11 @@
         educationDownloadLatest: 'Descargar la respuesta en PDF',
         clearText: 'Borrar texto',
         educationNoSource: 'Agrega un texto o selecciona un documento antes de pedir una tarea de estudio.',
-        unsupportedDocument: 'Importa un documento de texto (.txt, .md, .csv o .json).',
+        unsupportedDocument: 'Importa un documento compatible (.txt, .md, .csv, .json o .pdf).',
+        educationDocumentImportFailed: 'No se pudo importar este documento.',
+        educationPdfImportUnavailable: 'El modulo PDF no esta listo para leer este archivo.',
+        educationPdfImportFailed: 'No se pudo leer este PDF.',
+        educationPdfImportEmpty: 'Este PDF no contiene texto utilizable.',
         importedDocumentMeta: '{count} caracteres',
         settingsTitle: 'Ajustes',
         settingsTheme: 'Tema',
@@ -4144,7 +4156,74 @@ function getEducationStudyContext(fallbackText = '') {
   };
 }
 
-function handleEducationDocumentUpload(event) {
+function getPdfJsLib() {
+  const pdfjsLib = window.pdfjsLib;
+  if (!pdfjsLib) return null;
+
+  if (pdfjsLib.GlobalWorkerOptions) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'node_modules/pdfjs-dist/build/pdf.worker.min.js';
+  }
+
+  return pdfjsLib;
+}
+
+function readEducationTextFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('file-read-failed'));
+    reader.readAsText(file);
+  });
+}
+
+async function extractEducationPdfText(file) {
+  const pdfjsLib = getPdfJsLib();
+  if (!pdfjsLib) {
+    throw new Error('pdf-unavailable');
+  }
+
+  const fileBuffer = await file.arrayBuffer();
+  const pdfDocument = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
+  const pages = [];
+
+  for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+    const page = await pdfDocument.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (pageText) {
+      pages.push(pageText);
+    }
+  }
+
+  const extractedText = pages.join('\n\n').trim();
+  if (!extractedText) {
+    throw new Error('pdf-empty');
+  }
+
+  return extractedText;
+}
+
+async function extractEducationUploadContent(file) {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const isTextLike = file.type.startsWith('text/') || ['application/json'].includes(file.type) || /\.(txt|md|csv|json)$/i.test(file.name);
+
+  if (isPdf) {
+    return extractEducationPdfText(file);
+  }
+
+  if (isTextLike) {
+    return readEducationTextFile(file);
+  }
+
+  throw new Error('unsupported-document');
+}
+
+async function handleEducationDocumentUpload(event) {
   const files = Array.from(event.target.files || []);
   if (files.length === 0) return;
 
@@ -4160,16 +4239,12 @@ function handleEducationDocumentUpload(event) {
     showToast(t('educationFilesLimit'));
   }
 
-  acceptedFiles.forEach((file, index) => {
-    const isTextLike = file.type.startsWith('text/') || ['application/json'].includes(file.type) || /\.(txt|md|csv|json)$/i.test(file.name);
-    if (!isTextLike) {
-      if (index === 0) showToast(t('unsupportedDocument'));
-      return;
-    }
+  let addedDocument = false;
+  let hasShownUnsupportedToast = false;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const content = typeof reader.result === 'string' ? reader.result : '';
+  for (const file of acceptedFiles) {
+    try {
+      const content = await extractEducationUploadContent(file);
       const documentEntry = {
         id: `edu-doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name: file.name,
@@ -4178,13 +4253,30 @@ function handleEducationDocumentUpload(event) {
 
       educationDocuments.unshift(documentEntry);
       selectedEducationDocumentId = documentEntry.id;
-      persistEducationState();
-      renderDocumentsList();
-      setEducationUploadPanelOpen(true);
-    };
+      addedDocument = true;
+    } catch (error) {
+      if (error?.message === 'unsupported-document') {
+        if (!hasShownUnsupportedToast) {
+          showToast(t('unsupportedDocument'));
+          hasShownUnsupportedToast = true;
+        }
+      } else if (error?.message === 'pdf-unavailable') {
+        showToast(t('educationPdfImportUnavailable'));
+      } else if (error?.message === 'pdf-empty') {
+        showToast(t('educationPdfImportEmpty'));
+      } else if (error?.message === 'file-read-failed') {
+        showToast(t('educationDocumentImportFailed'));
+      } else {
+        showToast(t('educationDocumentImportFailed'));
+      }
+    }
+  }
 
-    reader.readAsText(file);
-  });
+  if (addedDocument) {
+    persistEducationState();
+    renderDocumentsList();
+    setEducationUploadPanelOpen(true);
+  }
 
   event.target.value = '';
 }

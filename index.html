@@ -3283,10 +3283,10 @@
           <button class="planning-switch-btn" id="upload-doc-btn">Télécharger document</button>
           <button class="planning-switch-btn" id="clear-doc-btn">Effacer le texte</button>
         </div>
-        <input type="file" id="education-document-input" multiple accept=".txt,.md,.csv,.json,text/plain,text/markdown,application/json,text/csv" style="display: none;" />
+        <input type="file" id="education-document-input" multiple accept=".txt,.md,.csv,.json,.pdf,text/plain,text/markdown,application/json,text/csv,application/pdf" style="display: none;" />
         <div class="task-editor-label" id="education-paste-label">Texte de travail</div>
         <textarea class="task-editor-textarea education-source-textarea" id="education-source-text" placeholder="Colle ici un cours, un chapitre ou un extrait pour créer des fiches, reformulations et quiz."></textarea>
-        <div class="documents-help" id="documents-help-text">Importe un document texte ou colle un passage. Le chat IA d'Éducation utilisera ce contenu comme base de travail.</div>
+        <div class="documents-help" id="documents-help-text">Importe un document texte ou PDF, ou colle un passage. Le chat IA d'Éducation utilisera ce contenu comme base de travail.</div>
         <div class="documents-list" id="documents-list">
           <div style="color: var(--text3); text-align: center; padding: 20px;">
             <span id="documents-empty-text">Aucun document ou dossier</span>
@@ -3458,6 +3458,7 @@
     : '';
 </script>
 <script src="node_modules/jspdf/dist/jspdf.umd.min.js"></script>
+<script src="node_modules/pdfjs-dist/build/pdf.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
