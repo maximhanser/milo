@@ -30,6 +30,7 @@
       open: false,
       eventId: null
     };
+    let progressLockedTaskIds = new Set();
 
     const panel = document.getElementById('panel');
     const panelHandle = document.getElementById('panel-handle');
@@ -137,6 +138,7 @@
     const educationQuizHistoryStorageKey = 'milo.educationQuizHistory';
     const planningStorageKey = 'milo.planning';
     const monthlyPrimaryTasksStorageKey = 'milo.monthlyPrimaryTasks';
+    const progressSeenLevelStorageKey = 'milo.progressSeenLevel';
     const localAccessAccountStorageKey = 'milo.localAccessAccount';
     const localAccessSessionStorageKey = 'milo.localAccessSession';
     const navHomeItem = document.getElementById('nav-home-item');
@@ -207,6 +209,16 @@
       deltaX: 0,
       axis: null
     };
+    let progressCarouselDragState = {
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      deltaX: 0,
+      axis: null,
+      dragging: false
+    };
+    let currentProgressCarouselIndex = 0;
 
     const translations = {
       fr: {
@@ -248,6 +260,7 @@
         homeCard4Badge: 'Planifié par Milo',
         progressTitle: 'Progress',
         progressLevelKicker: 'Niveau Milo',
+        progressLevelupKicker: 'Niveau débloqué',
         progressSection: 'Tâches terminées',
         progressEmpty: 'Aucune tâche terminée pour le moment.',
         progressTasksOnly: 'Cette progression suit les tâches accomplies avec Milo, avec un plafond de points par jour.',
@@ -267,6 +280,17 @@
         progressLevelFocus: 'Maîtrise',
         progressLevelPulse: 'Impulsion',
         progressLevelLegend: 'Légende',
+        progressLevelupCopy: 'Tu viens de franchir un cap avec Milo. Continue comme ça.',
+        progressLevelupCta: 'Continuer',
+        progressLevelStatusPast: 'Validé',
+        progressLevelStatusCurrent: 'En cours',
+        progressLevelStatusFuture: 'Non atteint',
+        progressLevelTasksPast: 'Tâches qui ont validé ce niveau',
+        progressLevelTasksCurrent: 'Tâches déjà comptées pour ce niveau',
+        progressLevelTasksFuture: 'Prochain palier',
+        progressLevelFutureHint: 'Continue pour débloquer ce niveau.',
+        progressLevelLockedTask: 'Verrouillée par un niveau validé',
+        progressLevelNoTasks: 'Aucune tâche attribuée pour l’instant.',
         profileTitle: 'Profil',
         profileHeroTitle: 'Ton espace personnel',
         profileHeroSubtitle: 'Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.',
@@ -502,6 +526,7 @@
         homeCard4Badge: 'Planned by Milo',
         progressTitle: 'Progress',
         progressLevelKicker: 'Milo level',
+        progressLevelupKicker: 'Level unlocked',
         progressSection: 'Completed tasks',
         progressEmpty: 'No completed task yet.',
         progressTasksOnly: 'This progression follows the tasks you complete with Milo, with a daily points cap.',
@@ -521,6 +546,17 @@
         progressLevelFocus: 'Mastery',
         progressLevelPulse: 'Pulse',
         progressLevelLegend: 'Legend',
+        progressLevelupCopy: 'You just crossed a new milestone with Milo. Keep going.',
+        progressLevelupCta: 'Continue',
+        progressLevelStatusPast: 'Completed',
+        progressLevelStatusCurrent: 'In progress',
+        progressLevelStatusFuture: 'Locked',
+        progressLevelTasksPast: 'Tasks that unlocked this level',
+        progressLevelTasksCurrent: 'Tasks already counted for this level',
+        progressLevelTasksFuture: 'Next milestone',
+        progressLevelFutureHint: 'Keep going to unlock this level.',
+        progressLevelLockedTask: 'Locked by a validated level',
+        progressLevelNoTasks: 'No task assigned yet.',
         profileTitle: 'Profile',
         profileHeroTitle: 'Your personal space',
         profileHeroSubtitle: 'Find your main profile information here in a full dedicated page, just like Education.',
@@ -756,6 +792,7 @@
         homeCard4Badge: 'Planificado por Milo',
         progressTitle: 'Progreso',
         progressLevelKicker: 'Nivel Milo',
+        progressLevelupKicker: 'Nivel desbloqueado',
         progressSection: 'Tareas completadas',
         progressEmpty: 'Todavia no hay tareas completadas.',
         progressTasksOnly: 'Esta progresion sigue las tareas completadas con Milo, con un limite de puntos por dia.',
@@ -775,6 +812,17 @@
         progressLevelFocus: 'Dominio',
         progressLevelPulse: 'Pulso',
         progressLevelLegend: 'Leyenda',
+        progressLevelupCopy: 'Acabas de superar un nuevo nivel con Milo. Sigue asi.',
+        progressLevelupCta: 'Continuar',
+        progressLevelStatusPast: 'Validado',
+        progressLevelStatusCurrent: 'En curso',
+        progressLevelStatusFuture: 'No alcanzado',
+        progressLevelTasksPast: 'Tareas que validaron este nivel',
+        progressLevelTasksCurrent: 'Tareas ya contadas para este nivel',
+        progressLevelTasksFuture: 'Siguiente objetivo',
+        progressLevelFutureHint: 'Sigue avanzando para desbloquear este nivel.',
+        progressLevelLockedTask: 'Bloqueada por un nivel ya validado',
+        progressLevelNoTasks: 'Todavia no hay tareas asignadas.',
         profileTitle: 'Perfil',
         profileHeroTitle: 'Tu espacio personal',
         profileHeroSubtitle: 'Encuentra aqui la informacion principal de tu perfil en una pagina dedicada, igual que Educacion.',
@@ -1205,6 +1253,108 @@ function handleDailyNewsPointerEnd(event) {
   }
 }
 
+function resetProgressCarouselDragState() {
+  progressCarouselDragState = {
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    deltaX: 0,
+    axis: null,
+    dragging: false
+  };
+}
+
+function getProgressCarouselStep() {
+  const levelRail = document.getElementById('progress-level-rail');
+  const firstCard = levelRail?.querySelector('.progress-level-card');
+  if (!levelRail || !firstCard) return 0;
+
+  const railStyles = window.getComputedStyle(levelRail);
+  const gap = Number.parseFloat(railStyles.columnGap || railStyles.gap || '0') || 0;
+  return firstCard.getBoundingClientRect().width + gap;
+}
+
+function updateProgressCarouselPosition({ animate = true, dragOffset = 0 } = {}) {
+  const levelRail = document.getElementById('progress-level-rail');
+  if (!levelRail) return;
+
+  const step = getProgressCarouselStep();
+  const translateX = (-1 * currentProgressCarouselIndex * step) + dragOffset;
+  levelRail.style.transition = animate ? 'transform 0.28s ease' : 'none';
+  levelRail.style.transform = `translateX(${translateX}px)`;
+}
+
+function handleProgressCarouselPointerDown(event) {
+  const carousel = document.getElementById('progress-level-carousel');
+  if (!carousel) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+  progressCarouselDragState = {
+    active: true,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    deltaX: 0,
+    axis: null,
+    dragging: false
+  };
+
+  carousel.classList.add('dragging');
+  if (typeof carousel.setPointerCapture === 'function') {
+    carousel.setPointerCapture(event.pointerId);
+  }
+}
+
+function handleProgressCarouselPointerMove(event) {
+  const carousel = document.getElementById('progress-level-carousel');
+  if (!carousel || !progressCarouselDragState.active || event.pointerId !== progressCarouselDragState.pointerId) return;
+
+  const deltaX = event.clientX - progressCarouselDragState.startX;
+  const deltaY = event.clientY - progressCarouselDragState.startY;
+
+  if (!progressCarouselDragState.axis) {
+    if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return;
+    progressCarouselDragState.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+  }
+
+  if (progressCarouselDragState.axis !== 'x') return;
+
+  event.preventDefault();
+  progressCarouselDragState.dragging = true;
+  progressCarouselDragState.deltaX = deltaX;
+  const clampedDeltaX = Math.max(-72, Math.min(72, deltaX));
+  updateProgressCarouselPosition({ animate: false, dragOffset: clampedDeltaX });
+}
+
+function handleProgressCarouselPointerEnd(event) {
+  const carousel = document.getElementById('progress-level-carousel');
+  if (!carousel || !progressCarouselDragState.active || event.pointerId !== progressCarouselDragState.pointerId) return;
+
+  carousel.classList.remove('dragging');
+
+  const levelCards = carousel.querySelectorAll('.progress-level-card');
+  const maxIndex = Math.max(0, levelCards.length - 1);
+  const shouldNavigate = progressCarouselDragState.axis === 'x' && Math.abs(progressCarouselDragState.deltaX) > 44;
+  if (shouldNavigate) {
+    if (progressCarouselDragState.deltaX < 0) {
+      currentProgressCarouselIndex = Math.min(maxIndex, currentProgressCarouselIndex + 1);
+    } else {
+      currentProgressCarouselIndex = Math.max(0, currentProgressCarouselIndex - 1);
+    }
+  }
+
+  updateProgressCarouselPosition({ animate: true, dragOffset: 0 });
+
+  if (carousel.releasePointerCapture) {
+    try {
+      carousel.releasePointerCapture(event.pointerId);
+    } catch {}
+  }
+
+  resetProgressCarouselDragState();
+}
+
 function getDailyNewsDateKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -1364,6 +1514,9 @@ function applyTranslations() {
   setText('home-card-4-badge', 'homeCard4Badge');
   setText('progress-page-title', 'progressTitle');
   setText('progress-level-kicker', 'progressLevelKicker');
+  setText('progress-levelup-kicker', 'progressLevelupKicker');
+  setText('progress-levelup-copy', 'progressLevelupCopy');
+  setText('progress-levelup-close', 'progressLevelupCta');
   setText('progress-section-label', 'progressSection');
   setText('profile-page-title', 'profileTitle');
   setText('profile-hero-title', 'profileHeroTitle');
@@ -2659,6 +2812,12 @@ function showAvatarDevPage() {
   if (miloBtnWrap) miloBtnWrap.style.display = 'none';
   updateFloatingPrimaryButton();
   renderProgressPage();
+
+  const completedEvents = getCompletedPlanningEvents()
+    .filter((event) => event && typeof event === 'object')
+    .sort((left, right) => right.completedAt - left.completedAt);
+  const progressState = getProgressLevelState(getProgressPointsSummary(completedEvents).earnedPoints);
+  maybeShowProgressLevelup(progressState.currentLevelNumber, t(progressState.currentLevel.titleKey));
 }
 
 function isEducationPageVisible() {
@@ -5931,6 +6090,66 @@ function getProgressPointsSummary(completedEvents) {
   };
 }
 
+function getCountedProgressEvents(completedEvents) {
+  const dailyPointsCap = getProgressDailyPointsCap();
+  const sortedEvents = [...completedEvents].sort((left, right) => left.completedAt - right.completedAt);
+  const countedPerDay = new Map();
+  const countedEvents = [];
+
+  sortedEvents.forEach((event) => {
+    const completedDate = new Date(event?.completedAt);
+    if (Number.isNaN(completedDate.getTime())) return;
+
+    const dayKey = completedDate.toISOString().slice(0, 10);
+    const currentCount = countedPerDay.get(dayKey) || 0;
+    if (currentCount >= dailyPointsCap) return;
+
+    countedPerDay.set(dayKey, currentCount + 1);
+    countedEvents.push(event);
+  });
+
+  return countedEvents;
+}
+
+function getProgressLevelCardSummaries(completedEvents) {
+  const definitions = getProgressLevelDefinitions();
+  const countedEvents = getCountedProgressEvents(completedEvents);
+  const currentLevelState = getProgressLevelState(countedEvents.length);
+
+  return definitions.map((definition, index) => {
+    const levelNumber = index + 1;
+    const nextThreshold = definitions[index + 1]?.minCompleted ?? definition.minCompleted;
+    const isPast = levelNumber < currentLevelState.currentLevelNumber;
+    const isCurrent = levelNumber === currentLevelState.currentLevelNumber;
+    const isFuture = levelNumber > currentLevelState.currentLevelNumber;
+    const targetThreshold = definition.minCompleted;
+
+    let tasks = [];
+    if (isPast) {
+      tasks = countedEvents.slice(definition.minCompleted, nextThreshold);
+    } else if (isCurrent) {
+      tasks = countedEvents.slice(definition.minCompleted, countedEvents.length);
+    }
+
+    return {
+      levelNumber,
+      titleKey: definition.titleKey,
+      isPast,
+      isCurrent,
+      isFuture,
+      progressPercent: isFuture
+        ? 0
+        : isCurrent
+          ? currentLevelState.progressPercent
+          : 100,
+      tasks,
+      pointsNeeded: Math.max(0, nextThreshold - countedEvents.length),
+      targetThreshold,
+      nextThreshold
+    };
+  });
+}
+
 function getProgressActiveDayCount(completedEvents) {
   const sortedUniqueDays = [...new Set(completedEvents
     .map((event) => {
@@ -5991,80 +6210,197 @@ function getProgressLevelState(completedCount) {
   };
 }
 
-function renderProgressHero(completedEvents) {
-  const levelName = document.getElementById('progress-level-name');
-  const levelSub = document.getElementById('progress-level-sub');
-  const levelBadge = document.getElementById('progress-level-badge');
-  const levelFill = document.getElementById('progress-level-fill');
-  const levelCurrent = document.getElementById('progress-level-current');
-  const levelNext = document.getElementById('progress-level-next');
-  const totalPill = document.getElementById('progress-level-total-pill');
-  const streakPill = document.getElementById('progress-level-streak-pill');
-  const levelNote = document.getElementById('progress-level-note');
-  if (!levelName || !levelSub || !levelBadge || !levelFill || !levelCurrent || !levelNext || !totalPill || !streakPill || !levelNote) return;
+function getSeenProgressLevel() {
+  try {
+    const rawLevel = Number(window.localStorage.getItem(progressSeenLevelStorageKey));
+    return Number.isFinite(rawLevel) && rawLevel > 0 ? rawLevel : 0;
+  } catch {
+    return 0;
+  }
+}
 
-  const completedCount = completedEvents.length;
+function setSeenProgressLevel(level) {
+  try {
+    window.localStorage.setItem(progressSeenLevelStorageKey, String(level));
+  } catch {}
+}
+
+function closeProgressLevelupOverlay() {
+  const overlay = document.getElementById('progress-levelup-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+function openProgressLevelupOverlay(levelNumber, levelTitle) {
+  const overlay = document.getElementById('progress-levelup-overlay');
+  const title = document.getElementById('progress-levelup-title');
+  const level = document.getElementById('progress-levelup-level');
+  const copy = document.getElementById('progress-levelup-copy');
+  if (!overlay || !title || !level || !copy) return;
+
+  title.textContent = levelTitle;
+  level.textContent = t('progressLevelLabel', { level: String(levelNumber) });
+  copy.textContent = t('progressLevelupCopy');
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+}
+
+function maybeShowProgressLevelup(levelNumber, levelTitle) {
+  const seenLevel = getSeenProgressLevel();
+  if (seenLevel <= 0) {
+    setSeenProgressLevel(levelNumber);
+    return;
+  }
+
+  if (levelNumber > seenLevel) {
+    openProgressLevelupOverlay(levelNumber, levelTitle);
+    setSeenProgressLevel(levelNumber);
+  }
+}
+
+function renderProgressHero(completedEvents) {
+  const levelCarousel = document.getElementById('progress-level-carousel');
+  const levelRail = document.getElementById('progress-level-rail');
+  if (!levelCarousel || !levelRail) return;
+
   const dailyPointsCap = getProgressDailyPointsCap();
   const pointsSummary = getProgressPointsSummary(completedEvents);
   const activeDayCount = getProgressActiveDayCount(completedEvents);
   const progressState = getProgressLevelState(pointsSummary.earnedPoints);
-  const currentLevelTitle = t(progressState.currentLevel.titleKey);
-  const nextLevelTitle = progressState.nextLevel ? t(progressState.nextLevel.titleKey) : t('progressLevelMax');
+  const levelSummaries = getProgressLevelCardSummaries(completedEvents);
   const activeDaysLabel = activeDayCount === 1
     ? t('progressActiveDaySingle', { count: String(activeDayCount) })
     : t('progressActiveDays', { count: String(activeDayCount) });
+  const lockedTaskIds = new Set(getCountedProgressEvents(completedEvents)
+    .slice(0, progressState.currentLevel.minCompleted)
+    .map((event) => event.id));
+  progressLockedTaskIds = lockedTaskIds;
 
-  levelName.textContent = `${t('progressLevelLabel', { level: String(progressState.currentLevelNumber) })} · ${currentLevelTitle}`;
-  levelSub.textContent = `${t('progressTasksOnly')} ${activeDaysLabel}.`;
-  levelBadge.textContent = `Lv. ${progressState.currentLevelNumber}`;
-  levelFill.style.width = `${progressState.progressPercent}%`;
-  levelCurrent.textContent = currentLevelTitle;
-  levelNext.textContent = nextLevelTitle;
-  totalPill.textContent = t('progressPointsDone', { count: String(pointsSummary.earnedPoints) });
-  streakPill.textContent = t('progressDailyCap', { count: String(dailyPointsCap) });
-  levelNote.textContent = progressState.nextLevel
-    ? `${t('progressNextLevel', { count: String(progressState.tasksToNext), title: nextLevelTitle })} ${t('progressDailyCapHint', { count: String(dailyPointsCap) })}`
-    : `${t('progressMaxLevelReached')} ${t('progressDailyCapHint', { count: String(dailyPointsCap) })}`;
+  levelRail.innerHTML = levelSummaries.map((summary) => {
+    const title = t(summary.titleKey);
+    const subText = summary.levelNumber <= 2 ? `${t('progressTasksOnly')} ${activeDaysLabel}.` : activeDaysLabel;
+    const nextLevelTitle = summary.isFuture
+      ? title
+      : summary.isCurrent && progressState.nextLevel
+        ? t(progressState.nextLevel.titleKey)
+        : t('progressLevelMax');
+    const statusLabel = summary.isPast
+      ? t('progressLevelStatusPast')
+      : summary.isCurrent
+        ? t('progressLevelStatusCurrent')
+        : t('progressLevelStatusFuture');
+    const tasksLabel = summary.isPast
+      ? t('progressLevelTasksPast')
+      : summary.isCurrent
+        ? t('progressLevelTasksCurrent')
+        : t('progressLevelTasksFuture');
+    const note = summary.isFuture
+      ? `${t('progressNextLevel', { count: String(summary.pointsNeeded), title })} ${t('progressLevelFutureHint')}`
+      : summary.isCurrent
+        ? progressState.nextLevel
+          ? `${t('progressNextLevel', { count: String(progressState.tasksToNext), title: nextLevelTitle })} ${t('progressDailyCapHint', { count: String(dailyPointsCap) })}`
+          : `${t('progressMaxLevelReached')} ${t('progressDailyCapHint', { count: String(dailyPointsCap) })}`
+        : `${t('progressPointsDone', { count: String(summary.tasks.length) })} · ${activeDaysLabel}`;
+    const tasksHtml = summary.tasks.length
+      ? summary.tasks.map((event) => `
+          <div class="progress-level-task-item">
+            <div class="progress-level-task-dot"></div>
+            <div class="progress-level-task-body">
+              <div class="progress-level-task-title">${escapeHtml(event.title || t('untitledTask'))}</div>
+              <div class="progress-level-task-meta">${escapeHtml(formatTaskDateLabel(event.date, event.time))}</div>
+            </div>
+          </div>
+        `).join('')
+      : `<div class="progress-level-empty">${escapeHtml(t('progressLevelNoTasks'))}</div>`;
+    const cardClasses = [
+      'progress-level-card',
+      summary.isPast ? 'level-past' : '',
+      summary.isCurrent ? 'level-current' : '',
+      summary.isFuture ? 'level-future' : '',
+      summary.isFuture && summary.levelNumber === progressState.currentLevelNumber + 1 ? 'level-future-next' : '',
+      summary.isFuture && summary.levelNumber > progressState.currentLevelNumber + 1 ? 'level-future-deep' : '',
+      summary.levelNumber === 2 ? 'level-2' : ''
+    ].filter(Boolean).join(' ');
+
+    return `
+      <article class="${cardClasses}" data-progress-level-card="${summary.levelNumber}">
+        <div class="progress-level-kicker">${escapeHtml(t('progressLevelKicker'))}</div>
+        <div class="progress-level-status">${escapeHtml(statusLabel)}</div>
+        <div class="progress-level-top">
+          <div>
+            <div class="progress-level-name">${escapeHtml(t('progressLevelLabel', { level: String(summary.levelNumber) }))} · ${escapeHtml(title)}</div>
+            <div class="progress-level-sub">${escapeHtml(subText)}</div>
+          </div>
+          <div class="progress-level-badge">Lv. ${summary.levelNumber}</div>
+        </div>
+        <div class="progress-level-track" aria-hidden="true">
+          <div class="progress-level-fill" style="width: ${summary.isFuture ? 0 : summary.progressPercent}%;"></div>
+        </div>
+        <div class="progress-level-scale">
+          <span>${escapeHtml(title)}</span>
+          <span>${escapeHtml(summary.isFuture ? t('progressLevelStatusFuture') : nextLevelTitle)}</span>
+        </div>
+        <div class="progress-level-pills">
+          <div class="progress-level-pill">${escapeHtml(t('progressPointsDone', { count: String(summary.isFuture ? summary.targetThreshold : summary.tasks.length) }))}</div>
+          <div class="progress-level-pill">${escapeHtml(t('progressDailyCap', { count: String(dailyPointsCap) }))}</div>
+        </div>
+        <div class="progress-level-note">${escapeHtml(note)}</div>
+        <div class="progress-level-tasks">
+          <div class="progress-level-task-label">${escapeHtml(tasksLabel)}</div>
+          <div class="progress-level-task-list">${tasksHtml}</div>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  currentProgressCarouselIndex = Math.max(0, Math.min(levelSummaries.length - 1, progressState.currentLevelNumber - 1));
+  updateProgressCarouselPosition({ animate: false, dragOffset: 0 });
 }
 
 function renderProgressHeroFallback() {
-  const levelName = document.getElementById('progress-level-name');
-  const levelSub = document.getElementById('progress-level-sub');
-  const levelBadge = document.getElementById('progress-level-badge');
-  const levelFill = document.getElementById('progress-level-fill');
-  const levelCurrent = document.getElementById('progress-level-current');
-  const levelNext = document.getElementById('progress-level-next');
-  const totalPill = document.getElementById('progress-level-total-pill');
-  const streakPill = document.getElementById('progress-level-streak-pill');
-  const levelNote = document.getElementById('progress-level-note');
-  if (!levelName || !levelSub || !levelBadge || !levelFill || !levelCurrent || !levelNext || !totalPill || !streakPill || !levelNote) return;
-  const dailyPointsCap = getProgressDailyPointsCap();
-
-  levelName.textContent = `${t('progressLevelLabel', { level: '1' })} · ${t('progressLevelSpark')}`;
-  levelSub.textContent = t('progressTasksOnly');
-  levelBadge.textContent = 'Lv. 1';
-  levelFill.style.width = '0%';
-  levelCurrent.textContent = t('progressLevelSpark');
-  levelNext.textContent = t('progressLevelMomentum');
-  totalPill.textContent = t('progressPointsDone', { count: '0' });
-  streakPill.textContent = t('progressDailyCap', { count: String(dailyPointsCap) });
-  levelNote.textContent = t('progressDailyCapHint', { count: String(dailyPointsCap) });
+  const levelRail = document.getElementById('progress-level-rail');
+  if (!levelRail) return;
+  progressLockedTaskIds = new Set();
+  levelRail.innerHTML = '';
+  currentProgressCarouselIndex = 0;
 }
 
 function initializeProgressInteractions() {
+  const progressCarousel = document.getElementById('progress-level-carousel');
   const progressList = document.getElementById('progress-completed-list');
   const progressModalBackdrop = document.getElementById('progress-task-modal-backdrop');
   const progressModalClose = document.getElementById('progress-task-modal-close');
   const progressModalCancel = document.getElementById('progress-task-modal-cancel');
+  const progressLevelupOverlay = document.getElementById('progress-levelup-overlay');
+  const progressLevelupClose = document.getElementById('progress-levelup-close');
 
   if (!progressList || progressList._initialized) return;
   progressList._initialized = true;
+
+  progressCarousel?.addEventListener('pointerdown', handleProgressCarouselPointerDown);
+  progressCarousel?.addEventListener('pointermove', handleProgressCarouselPointerMove);
+  progressCarousel?.addEventListener('pointerup', handleProgressCarouselPointerEnd);
+  progressCarousel?.addEventListener('pointercancel', handleProgressCarouselPointerEnd);
+  progressCarousel?.addEventListener('lostpointercapture', () => {
+    const carousel = document.getElementById('progress-level-carousel');
+    carousel?.classList.remove('dragging');
+    if (progressCarouselDragState.active) {
+      updateProgressCarouselPosition({ animate: true, dragOffset: 0 });
+      resetProgressCarouselDragState();
+    }
+  });
 
   progressList.addEventListener('click', (event) => {
     const restoreButton = event.target.closest('[data-restore-event-id]');
     if (restoreButton) {
       event.stopPropagation();
-      markPlanningEventActive(Number(restoreButton.dataset.restoreEventId));
+      const restoreEventId = Number(restoreButton.dataset.restoreEventId);
+      if (progressLockedTaskIds.has(restoreEventId)) {
+        showToast(t('progressLevelLockedTask'));
+        return;
+      }
+      markPlanningEventActive(restoreEventId);
       return;
     }
 
@@ -6078,6 +6414,13 @@ function initializeProgressInteractions() {
   progressModalBackdrop?.addEventListener('click', (event) => {
     if (event.target === progressModalBackdrop) {
       closeProgressTaskModal();
+    }
+  });
+
+  progressLevelupClose?.addEventListener('click', closeProgressLevelupOverlay);
+  progressLevelupOverlay?.addEventListener('click', (event) => {
+    if (event.target === progressLevelupOverlay) {
+      closeProgressLevelupOverlay();
     }
   });
 }
@@ -6101,7 +6444,13 @@ function renderProgressPage() {
       return;
     }
 
-    progressList.innerHTML = completedEvents.map((event) => (`<div class="progress-event-card"><button type="button" class="progress-event-open" data-progress-open-id="${event.id}"><div class="progress-event-main"><div class="agenda-event-time">${escapeHtml(formatTaskDateLabel(event.date, event.time))}</div><div class="agenda-name">${escapeHtml(event.title || t('untitledTask'))}</div></div></button><button type="button" class="agenda-event-check checked" data-restore-event-id="${event.id}" aria-label="${escapeHtml(t('taskUncompleteAria'))}"></button></div>`)).join('');
+    progressList.innerHTML = completedEvents.map((event) => {
+      const isLocked = progressLockedTaskIds.has(event.id);
+      const actionHtml = isLocked
+        ? `<div class="progress-event-lock" title="${escapeHtml(t('progressLevelLockedTask'))}" aria-label="${escapeHtml(t('progressLevelLockedTask'))}">🔒</div>`
+        : `<button type="button" class="agenda-event-check checked" data-restore-event-id="${event.id}" aria-label="${escapeHtml(t('taskUncompleteAria'))}"></button>`;
+      return `<div class="progress-event-card"><button type="button" class="progress-event-open" data-progress-open-id="${event.id}"><div class="progress-event-main"><div class="agenda-event-time">${escapeHtml(formatTaskDateLabel(event.date, event.time))}</div><div class="agenda-name">${escapeHtml(event.title || t('untitledTask'))}</div></div></button>${actionHtml}</div>`;
+    }).join('');
     renderProgressTaskModal();
   } catch (error) {
     console.error('Progress render error:', error);
