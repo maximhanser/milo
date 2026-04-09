@@ -1,6 +1,8 @@
     // Panel management
     let panelOpen = false;
     let chatHistory = [];
+    let chatConversations = [];
+    let activeChatConversationId = '';
     let educationChatHistory = [];
     let currentPanelSection = 'chat';
     const DAY_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
@@ -40,6 +42,8 @@
     const textInput = document.getElementById('text-input');
     const sendBtn = document.getElementById('send-btn');
     const chatHistoryEl = document.getElementById('chat-history');
+    const chatThreadListEl = document.getElementById('chat-thread-list');
+    const panelNewChatBtn = document.getElementById('panel-new-chat-btn');
     const educationTextInput = document.getElementById('education-text-input');
     const educationSendBtn = document.getElementById('education-send-btn');
     const educationChatHistoryEl = document.getElementById('education-chat-history');
@@ -80,13 +84,13 @@
     const settingsMenuClose = document.getElementById('settings-menu-close');
     const settingsPreferencesItem = document.getElementById('settings-preferences-item');
     const settingsLogoutItem = document.getElementById('settings-logout-item');
-    const settingsTestNotificationItem = document.getElementById('settings-test-notification-item');
-    const notificationsSettingRow = document.getElementById('notifications-setting-row');
-    const notificationsToggle = document.getElementById('notifications-toggle');
     const themeToggle = document.getElementById('theme-toggle');
     const homeDailyNewsList = document.getElementById('home-daily-news-list');
     const avatarPageTriggers = document.querySelectorAll('[data-open-avatar-page]');
     const accessScreen = document.getElementById('access-screen');
+    const accessLaunchOverlay = document.getElementById('access-launch-overlay');
+    const accessLaunchWord = document.getElementById('access-launch-word');
+    const accessLaunchPortal = document.getElementById('access-launch-portal');
     const accessBadge = document.getElementById('access-badge');
     const accessTitle = document.getElementById('access-title');
     const accessCopy = document.getElementById('access-copy');
@@ -116,6 +120,8 @@
     const profileStorageKey = 'milo.profile';
     const preferencesStorageKey = 'milo.preferences';
     const chatSessionStorageKey = 'milo.chatSessionId';
+    const chatConversationsStorageKey = 'milo.chatConversations';
+    const activeChatConversationStorageKey = 'milo.chatActiveConversationId';
     const educationDocumentsStorageKey = 'milo.educationDocuments';
     const educationSourceStorageKey = 'milo.educationSourceText';
     const planningStorageKey = 'milo.planning';
@@ -141,15 +147,13 @@
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
     let dailyNewsTheme = 'none';
-    let browserNotificationsEnabled = false;
-    let browserNotificationIntervalId = null;
-    let sentBrowserNotificationKeys = new Set();
     let accessState = {
       mode: 'locked',
       username: '',
       hasLocalAccount: false
     };
     let isAccessPasswordVisible = false;
+    let isAccessLaunchAnimationRunning = false;
     let dailyNewsState = {
       cacheKey: '',
       entry: null,
@@ -310,6 +314,8 @@
         toastNotificationsDenied: 'La permission de notifications a été refusée.',
         toastNotificationsEnabled: 'Notifications navigateur activées.',
         toastNotificationsDisabled: 'Notifications navigateur désactivées.',
+        toastNotificationTestSent: 'Test envoyé au navigateur. Si aucune bannière n’apparaît, vérifie les notifications Chrome dans les réglages macOS.',
+        toastNotificationTestError: 'Le navigateur a refusé d’afficher la notification de test.',
         toastNotificationsFallback: 'Les rappels Milo s’afficheront dans l’app tant qu’elle reste ouverte.',
         newsThemeNone: 'Aucun',
         newsThemeMusic: 'Musique',
@@ -321,6 +327,16 @@
         chatListening: 'J\'écoute…',
         chatThinking: 'Milo réfléchit…',
         chatPlaceholder: 'Écris à Milo…',
+        newChat: 'Nouveau chat',
+        chatThreadsLabel: 'Discussions',
+        chatUntitledConversation: 'Nouvelle discussion',
+        chatRenameAction: 'Renommer',
+        chatDeleteAction: 'Supprimer',
+        chatDeleteConfirm: 'Supprimer la discussion « {title} » ?',
+        chatRenamePrompt: 'Nouveau nom de la discussion :',
+        chatGreetingNamed: 'Bonjour {name}, que puis-je faire pour toi aujourd\'hui ?',
+        chatGreetingGuest: 'Bonjour invité, que puis-je faire pour toi aujourd\'hui ?',
+        chatGreetingFallback: 'Bonjour, que puis-je faire pour toi aujourd\'hui ?',
         planningDay: 'Jour',
         planningMonth: 'Mois',
         planningNewTask: '+ Nouvelle tâche',
@@ -511,6 +527,8 @@
         toastNotificationsDenied: 'Notification permission was denied.',
         toastNotificationsEnabled: 'Browser notifications enabled.',
         toastNotificationsDisabled: 'Browser notifications disabled.',
+        toastNotificationTestSent: 'Test sent to the browser. If no banner appears, check Chrome notifications in macOS settings.',
+        toastNotificationTestError: 'The browser refused to display the test notification.',
         toastNotificationsFallback: 'Milo reminders will appear inside the app while it stays open.',
         newsThemeNone: 'None',
         newsThemeMusic: 'Music',
@@ -522,6 +540,16 @@
         chatListening: 'I\'m listening…',
         chatThinking: 'Milo is thinking…',
         chatPlaceholder: 'Write to Milo…',
+        newChat: 'New chat',
+        chatThreadsLabel: 'Threads',
+        chatUntitledConversation: 'New conversation',
+        chatRenameAction: 'Rename',
+        chatDeleteAction: 'Delete',
+        chatDeleteConfirm: 'Delete the conversation "{title}"?',
+        chatRenamePrompt: 'New conversation name:',
+        chatGreetingNamed: 'Hello {name}, what can I do for you today?',
+        chatGreetingGuest: 'Hello guest, what can I do for you today?',
+        chatGreetingFallback: 'Hello, what can I do for you today?',
         planningDay: 'Day',
         planningMonth: 'Month',
         planningNewTask: '+ New task',
@@ -712,6 +740,8 @@
         toastNotificationsDenied: 'Se rechazo el permiso de notificaciones.',
         toastNotificationsEnabled: 'Notificaciones del navegador activadas.',
         toastNotificationsDisabled: 'Notificaciones del navegador desactivadas.',
+        toastNotificationTestSent: 'Prueba enviada al navegador. Si no aparece ninguna notificacion, revisa los ajustes de Chrome en macOS.',
+        toastNotificationTestError: 'El navegador rechazo mostrar la notificacion de prueba.',
         toastNotificationsFallback: 'Los recordatorios de Milo apareceran dentro de la app mientras siga abierta.',
         newsThemeNone: 'Ninguno',
         newsThemeMusic: 'Musica',
@@ -723,6 +753,16 @@
         chatListening: 'Te escucho...',
         chatThinking: 'Milo esta pensando...',
         chatPlaceholder: 'Escribe a Milo...',
+        newChat: 'Nuevo chat',
+        chatThreadsLabel: 'Chats',
+        chatUntitledConversation: 'Nueva conversacion',
+        chatRenameAction: 'Renombrar',
+        chatDeleteAction: 'Eliminar',
+        chatDeleteConfirm: 'Eliminar la conversacion "{title}"?',
+        chatRenamePrompt: 'Nuevo nombre de la conversacion:',
+        chatGreetingNamed: 'Hola {name}, que puedo hacer por ti hoy?',
+        chatGreetingGuest: 'Hola invitado, que puedo hacer por ti hoy?',
+        chatGreetingFallback: 'Hola, que puedo hacer por ti hoy?',
         planningDay: 'Dia',
         planningMonth: 'Mes',
         planningNewTask: '+ Nueva tarea',
@@ -851,8 +891,7 @@ function normalizeDailyNewsTheme(value) {
 
 function getDefaultPreferences() {
   return {
-    dailyNewsTheme: 'economy',
-    browserNotificationsEnabled: false
+    dailyNewsTheme: 'economy'
   };
 }
 
@@ -867,8 +906,7 @@ function loadPreferences() {
     return {
       ...defaults,
       ...parsedPreferences,
-      dailyNewsTheme: normalizeDailyNewsTheme(parsedPreferences.dailyNewsTheme),
-      browserNotificationsEnabled: Boolean(parsedPreferences.browserNotificationsEnabled)
+      dailyNewsTheme: normalizeDailyNewsTheme(parsedPreferences.dailyNewsTheme)
     };
   } catch {
     return defaults;
@@ -877,14 +915,12 @@ function loadPreferences() {
 
 function persistPreferences() {
   window.localStorage.setItem(preferencesStorageKey, JSON.stringify({
-    dailyNewsTheme,
-    browserNotificationsEnabled
+    dailyNewsTheme
   }));
 }
 
 function applyPreferences(preferences) {
   dailyNewsTheme = normalizeDailyNewsTheme(preferences?.dailyNewsTheme);
-  browserNotificationsEnabled = Boolean(preferences?.browserNotificationsEnabled);
 }
 
 function getNewsThemeLabel(theme) {
@@ -1218,12 +1254,12 @@ function applyTranslations() {
   setText('education-clear-files-btn', 'educationClearFiles');
   setText('settings-menu-title', 'settingsTitle');
   setText('theme-label', 'settingsTheme');
-  setText('notifications-label', 'settingsNotifications');
-  setText('settings-test-notification-item', 'settingsTestNotification');
   setText('settings-preferences-item', 'settingsPreferences');
   setText('access-kicker', 'accessKicker');
   setText('access-username-label', 'accessUsername');
   setText('access-password-label', 'accessPassword');
+  setText('panel-new-chat-btn', 'newChat');
+  setText('chat-threads-label', 'chatThreadsLabel');
   setText('chat-empty-initial', 'chatEmpty');
   setText('education-chat-empty', 'educationChatEmpty');
   setText('view-day-btn-panel', 'planningDay');
@@ -1270,6 +1306,7 @@ function applyTranslations() {
   updateFloatingPrimaryButton();
   renderEducationComposerState();
   setPanelState('idle');
+  renderChatConversationList();
   renderChatHistory();
   renderEducationChatHistory();
   renderDocumentsList();
@@ -1417,6 +1454,340 @@ function resetConversationState() {
   renderEducationChatHistory();
 }
 
+function createChatConversationId() {
+  return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createChatSessionToken() {
+  return `milo-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function cloneChatMessages(messages = []) {
+  return messages
+    .filter(message => message && typeof message === 'object')
+    .map(message => ({
+      role: message.role === 'user' ? 'user' : 'milo',
+      text: typeof message.text === 'string' ? message.text : '',
+      isGreeting: Boolean(message.isGreeting)
+    }));
+}
+
+function createGreetingMessage() {
+  return { role: 'milo', text: '', isGreeting: true };
+}
+
+function ensureConversationGreeting(messages = []) {
+  const normalizedMessages = cloneChatMessages(messages);
+  if (!normalizedMessages.some(message => message.isGreeting)) {
+    normalizedMessages.unshift(createGreetingMessage());
+  }
+  return normalizedMessages;
+}
+
+function createChatConversation({
+  id = createChatConversationId(),
+  sessionId = createChatSessionToken(),
+  title = '',
+  customTitle = false,
+  messages = [],
+  createdAt = Date.now(),
+  updatedAt = Date.now()
+} = {}) {
+  return {
+    id,
+    sessionId,
+    title: typeof title === 'string' ? title : '',
+    customTitle: Boolean(customTitle),
+    messages: ensureConversationGreeting(messages),
+    createdAt,
+    updatedAt
+  };
+}
+
+function normalizeChatConversation(rawConversation) {
+  if (!rawConversation || typeof rawConversation !== 'object') return null;
+  if (typeof rawConversation.id !== 'string' || !rawConversation.id.trim()) return null;
+
+  return createChatConversation({
+    id: rawConversation.id,
+    sessionId: typeof rawConversation.sessionId === 'string' && rawConversation.sessionId.trim()
+      ? rawConversation.sessionId
+      : createChatSessionToken(),
+    title: typeof rawConversation.title === 'string' ? rawConversation.title : '',
+    customTitle: Boolean(rawConversation.customTitle),
+    messages: Array.isArray(rawConversation.messages) ? rawConversation.messages : [],
+    createdAt: typeof rawConversation.createdAt === 'number' ? rawConversation.createdAt : Date.now(),
+    updatedAt: typeof rawConversation.updatedAt === 'number' ? rawConversation.updatedAt : Date.now()
+  });
+}
+
+function saveChatConversationState() {
+  window.localStorage.setItem(chatConversationsStorageKey, JSON.stringify(chatConversations));
+  window.localStorage.setItem(activeChatConversationStorageKey, activeChatConversationId || '');
+}
+
+function loadChatConversationState() {
+  try {
+    const rawConversations = window.localStorage.getItem(chatConversationsStorageKey);
+    const parsedConversations = rawConversations ? JSON.parse(rawConversations) : [];
+    chatConversations = Array.isArray(parsedConversations)
+      ? parsedConversations.map(normalizeChatConversation).filter(Boolean)
+      : [];
+  } catch {
+    chatConversations = [];
+  }
+
+  activeChatConversationId = window.localStorage.getItem(activeChatConversationStorageKey) || '';
+}
+
+function getActiveChatConversation() {
+  return chatConversations.find(conversation => conversation.id === activeChatConversationId) || null;
+}
+
+function getConversationLatestMessage(conversation) {
+  if (!conversation) return null;
+  for (let index = conversation.messages.length - 1; index >= 0; index -= 1) {
+    const message = conversation.messages[index];
+    if (!message?.isGreeting && (message?.text || '').trim()) {
+      return message;
+    }
+  }
+  return null;
+}
+
+function getConversationFirstUserMessage(conversation) {
+  if (!conversation) return null;
+  return conversation.messages.find(message => message?.role === 'user' && !message?.isGreeting && (message?.text || '').trim()) || null;
+}
+
+function truncateConversationText(text, maxLength = 46) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trim()}…`;
+}
+
+function getChatConversationTitle(conversation) {
+  if (!conversation) return t('chatUntitledConversation');
+  if (conversation.customTitle && conversation.title.trim()) {
+    return conversation.title.trim();
+  }
+
+  const firstUserMessage = getConversationFirstUserMessage(conversation);
+  if (firstUserMessage) {
+    return truncateConversationText(firstUserMessage.text, 34);
+  }
+
+  return t('chatUntitledConversation');
+}
+
+function getChatConversationPreview(conversation) {
+  const latestMessage = getConversationLatestMessage(conversation);
+  if (latestMessage) {
+    return truncateConversationText(latestMessage.text, 44);
+  }
+  return truncateConversationText(getChatGreetingMessage(), 44);
+}
+
+function formatChatConversationTimestamp(timestamp) {
+  const value = typeof timestamp === 'number' ? timestamp : Date.now();
+  const date = new Date(value);
+  const now = new Date();
+  const sameDay = date.toDateString() === now.toDateString();
+
+  if (sameDay) {
+    return date.toLocaleTimeString(getCurrentLocale(), { hour: '2-digit', minute: '2-digit' });
+  }
+
+  return date.toLocaleDateString(getCurrentLocale(), { day: '2-digit', month: '2-digit' });
+}
+
+function renderChatConversationList() {
+  if (!chatThreadListEl) return;
+
+  if (chatConversations.length === 0) {
+    chatThreadListEl.innerHTML = '';
+    return;
+  }
+
+  const sortedConversations = [...chatConversations]
+    .sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0));
+
+  chatThreadListEl.innerHTML = sortedConversations.map((conversation) => {
+    const title = getChatConversationTitle(conversation);
+    const preview = getChatConversationPreview(conversation);
+    const isActive = conversation.id === activeChatConversationId;
+
+    return `
+      <div class="milo-thread-card ${isActive ? 'active' : ''}">
+        <button type="button" class="milo-thread-open" data-chat-conversation-id="${escapeHtml(conversation.id)}">
+          <span class="milo-thread-title">${escapeHtml(title)}</span>
+          <span class="milo-thread-preview">${escapeHtml(preview)}</span>
+          <span class="milo-thread-meta">${escapeHtml(formatChatConversationTimestamp(conversation.updatedAt))}</span>
+        </button>
+        <div class="milo-thread-actions">
+          <button type="button" class="milo-thread-action" data-chat-thread-action="rename" data-chat-thread-id="${escapeHtml(conversation.id)}" aria-label="${escapeHtml(t('chatRenameAction'))}" title="${escapeHtml(t('chatRenameAction'))}">✎</button>
+          <button type="button" class="milo-thread-action delete" data-chat-thread-action="delete" data-chat-thread-id="${escapeHtml(conversation.id)}" aria-label="${escapeHtml(t('chatDeleteAction'))}" title="${escapeHtml(t('chatDeleteAction'))}">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function syncActiveConversationMessages({ updateTimestamp = true } = {}) {
+  const activeConversation = getActiveChatConversation();
+  if (!activeConversation) return;
+
+  activeConversation.messages = ensureConversationGreeting(chatHistory);
+  if (updateTimestamp) {
+    activeConversation.updatedAt = Date.now();
+  }
+
+  saveChatConversationState();
+}
+
+function activateChatConversation(conversationId) {
+  const targetConversation = chatConversations.find(conversation => conversation.id === conversationId);
+  if (!targetConversation) return;
+
+  activeChatConversationId = targetConversation.id;
+  chatHistory = ensureConversationGreeting(targetConversation.messages);
+  targetConversation.messages = cloneChatMessages(chatHistory);
+  saveChatConversationState();
+  renderChatConversationList();
+  renderChatHistory();
+}
+
+function isChatConversationEmpty(conversation) {
+  return !conversation || !conversation.messages.some(message => !message?.isGreeting && (message?.text || '').trim());
+}
+
+function ensureActiveChatConversation() {
+  let activeConversation = getActiveChatConversation();
+
+  if (!activeConversation) {
+    activeConversation = createChatConversation();
+    chatConversations.unshift(activeConversation);
+    activeChatConversationId = activeConversation.id;
+    saveChatConversationState();
+  }
+
+  chatHistory = ensureConversationGreeting(activeConversation.messages);
+  activeConversation.messages = cloneChatMessages(chatHistory);
+  return activeConversation;
+}
+
+function initializeChatConversations() {
+  loadChatConversationState();
+  window.localStorage.removeItem(chatSessionStorageKey);
+
+  if (chatConversations.length === 0) {
+    const initialConversation = createChatConversation();
+    chatConversations = [initialConversation];
+    activeChatConversationId = initialConversation.id;
+    saveChatConversationState();
+  } else if (!chatConversations.some(conversation => conversation.id === activeChatConversationId)) {
+    activeChatConversationId = chatConversations[0].id;
+    saveChatConversationState();
+  }
+
+  ensureActiveChatConversation();
+  renderChatConversationList();
+}
+
+function renameChatConversation(conversationId) {
+  const conversation = chatConversations.find(entry => entry.id === conversationId);
+  if (!conversation) return;
+
+  const currentTitle = getChatConversationTitle(conversation);
+  const nextTitle = window.prompt(t('chatRenamePrompt'), currentTitle);
+  if (nextTitle === null) return;
+
+  const normalizedTitle = nextTitle.trim();
+  conversation.title = normalizedTitle;
+  conversation.customTitle = Boolean(normalizedTitle);
+  conversation.updatedAt = Date.now();
+  saveChatConversationState();
+  renderChatConversationList();
+}
+
+function deleteChatConversation(conversationId) {
+  const conversation = chatConversations.find(entry => entry.id === conversationId);
+  if (!conversation) return;
+
+  const confirmed = window.confirm(t('chatDeleteConfirm', { title: getChatConversationTitle(conversation) }));
+  if (!confirmed) return;
+
+  chatConversations = chatConversations.filter(entry => entry.id !== conversationId);
+
+  if (chatConversations.length === 0) {
+    const replacementConversation = createChatConversation();
+    chatConversations = [replacementConversation];
+    activeChatConversationId = replacementConversation.id;
+  } else if (activeChatConversationId === conversationId) {
+    activeChatConversationId = chatConversations[0].id;
+  }
+
+  saveChatConversationState();
+  ensureActiveChatConversation();
+  renderChatConversationList();
+  renderChatHistory();
+}
+
+function getChatDisplayName() {
+  const profileFirstName = collectProfileData({ includePhoto: false }).firstName || '';
+  if (profileFirstName) return profileFirstName;
+  if (accessState.mode === 'account' && accessState.username) return accessState.username;
+  return '';
+}
+
+function getChatGreetingMessage() {
+  if (accessState.mode === 'guest') {
+    return t('chatGreetingGuest');
+  }
+
+  const name = getChatDisplayName();
+  if (name) {
+    return t('chatGreetingNamed', { name });
+  }
+  return t('chatGreetingFallback');
+}
+
+function ensureChatGreeting() {
+  chatHistory = ensureConversationGreeting(chatHistory);
+  syncActiveConversationMessages({ updateTimestamp: false });
+}
+
+function startNewChatConversation(options = {}) {
+  const { shouldFocus = true } = options;
+  const activeConversation = getActiveChatConversation();
+
+  if (isChatConversationEmpty(activeConversation)) {
+    ensureActiveChatConversation();
+    renderChatConversationList();
+    renderChatHistory();
+    if (shouldFocus) textInput?.focus();
+    return;
+  }
+
+  const newConversation = createChatConversation();
+  chatConversations.unshift(newConversation);
+  activeChatConversationId = newConversation.id;
+  chatHistory = cloneChatMessages(newConversation.messages);
+  saveChatConversationState();
+  renderChatConversationList();
+  renderChatHistory();
+  if (panelLabel) {
+    panelLabel.textContent = t('chatIdle');
+  }
+  if (shouldFocus) textInput?.focus();
+}
+
+function updatePanelTopbarActions() {
+  if (!panelNewChatBtn) return;
+  panelNewChatBtn.classList.toggle('hidden', currentPanelSection !== 'chat');
+}
+
 function updateAccessScreenCopy() {
   const hasAccount = accessState.hasLocalAccount || hasLocalAccessAccount();
 
@@ -1460,6 +1831,86 @@ function setAccessPasswordVisibility(visible) {
   updateAccessScreenCopy();
 }
 
+function waitForUiDelay(delayMs) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  });
+}
+
+function shouldReduceMotion() {
+  return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function updateAccessLaunchZoomTarget() {
+  if (!accessLaunchOverlay || !accessLaunchWord || !accessLaunchPortal) return;
+
+  const overlayRect = accessLaunchOverlay.getBoundingClientRect();
+  const wordRect = accessLaunchWord.getBoundingClientRect();
+  const portalRect = accessLaunchPortal.getBoundingClientRect();
+  if (!overlayRect.width || !overlayRect.height || !wordRect.width || !wordRect.height || !portalRect.width || !portalRect.height) {
+    return;
+  }
+
+  const portalCenterX = portalRect.left + (portalRect.width / 2);
+  const portalCenterY = portalRect.top + (portalRect.height / 2);
+  const originX = ((portalCenterX - wordRect.left) / wordRect.width) * 100;
+  const originY = ((portalCenterY - wordRect.top) / wordRect.height) * 100;
+  const overlayCenterX = overlayRect.left + (overlayRect.width / 2);
+  const overlayCenterY = overlayRect.top + (overlayRect.height / 2);
+  const panX = overlayCenterX - portalCenterX;
+  const panY = (overlayCenterY - portalCenterY) + 10;
+
+  accessLaunchWord.style.setProperty('--access-launch-origin-x', `${originX}%`);
+  accessLaunchWord.style.setProperty('--access-launch-origin-y', `${originY}%`);
+  accessLaunchWord.style.setProperty('--access-launch-pan-x', `${panX}px`);
+  accessLaunchWord.style.setProperty('--access-launch-pan-y', `${panY}px`);
+}
+
+async function playAccessLaunchAnimation(onReveal) {
+  if (typeof onReveal !== 'function') return;
+
+  if (!accessLaunchOverlay || shouldReduceMotion() || isAccessLaunchAnimationRunning) {
+    onReveal();
+    return;
+  }
+
+  isAccessLaunchAnimationRunning = true;
+  accessLaunchOverlay.classList.remove('pulse', 'spin', 'zoom', 'fade-out');
+  accessLaunchOverlay.classList.add('open');
+  void accessLaunchOverlay.offsetWidth;
+  updateAccessLaunchZoomTarget();
+  accessLaunchOverlay.classList.add('pulse');
+  accessLaunchOverlay.classList.add('spin');
+
+  try {
+    await waitForUiDelay(1420);
+    onReveal();
+    accessLaunchOverlay.classList.remove('pulse');
+    void accessLaunchOverlay.offsetWidth;
+    accessLaunchOverlay.classList.add('zoom');
+    await waitForUiDelay(1320);
+    accessLaunchOverlay.classList.add('fade-out');
+    await waitForUiDelay(220);
+  } finally {
+    accessLaunchOverlay.classList.remove('open', 'pulse', 'spin', 'zoom', 'fade-out');
+    if (accessLaunchWord) {
+      accessLaunchWord.style.removeProperty('--access-launch-origin-x');
+      accessLaunchWord.style.removeProperty('--access-launch-origin-y');
+      accessLaunchWord.style.removeProperty('--access-launch-pan-x');
+      accessLaunchWord.style.removeProperty('--access-launch-pan-y');
+    }
+    isAccessLaunchAnimationRunning = false;
+  }
+}
+
+async function enterAppFromAccessScreen() {
+  await playAccessLaunchAnimation(() => {
+    updateAccessModeUi();
+    closeSettingsMenu();
+    showHome();
+  });
+}
+
 function updateAccessModeUi() {
   const isLocked = accessState.mode === 'locked';
 
@@ -1483,10 +1934,6 @@ function updateAccessModeUi() {
     settingsLogoutItem.style.display = isLocked ? 'none' : 'block';
   }
 
-  if (notificationsSettingRow) {
-    notificationsSettingRow.style.display = isAccountMode() ? 'flex' : 'none';
-  }
-
   avatarPageTriggers.forEach((trigger) => {
     trigger.style.display = isAccountMode() ? 'flex' : 'none';
   });
@@ -1497,150 +1944,6 @@ function updateAccessModeUi() {
   if (navEducationItem) navEducationItem.style.display = isLocked ? 'none' : 'flex';
 
   updateAccessScreenCopy();
-}
-
-function areBrowserNotificationsSupported() {
-  return typeof window !== 'undefined' && 'Notification' in window;
-}
-
-function updateBrowserNotificationsUi() {
-  if (!notificationsToggle) return;
-  notificationsToggle.classList.toggle('on', browserNotificationsEnabled);
-}
-
-function syncBrowserNotificationAvailability() {
-  const browserNotificationsAvailable = areBrowserNotificationsSupported() && Notification.permission === 'granted';
-  if (browserNotificationsEnabled && !browserNotificationsAvailable) {
-    browserNotificationsEnabled = false;
-    persistPreferences();
-  }
-  updateBrowserNotificationsUi();
-  return browserNotificationsAvailable;
-}
-
-function stopBrowserNotificationChecks() {
-  if (browserNotificationIntervalId !== null) {
-    window.clearInterval(browserNotificationIntervalId);
-    browserNotificationIntervalId = null;
-  }
-}
-
-function getPlanningEventStartDate(event) {
-  const eventDate = parseDateKeyString(event?.date || '');
-  const timeParts = parseTimeParts(event?.time || '');
-  if (!eventDate || !timeParts) return null;
-
-  eventDate.setHours(timeParts.hours, timeParts.minutes, 0, 0);
-  return eventDate;
-}
-
-function pruneSentBrowserNotificationKeys() {
-  const threshold = Date.now() - (24 * 60 * 60 * 1000);
-  sentBrowserNotificationKeys = new Set(
-    [...sentBrowserNotificationKeys].filter((entry) => {
-      const timestamp = Number(entry.split('::')[1] || 0);
-      return Number.isFinite(timestamp) && timestamp >= threshold;
-    })
-  );
-}
-
-function maybeSendBrowserNotifications() {
-  if (!browserNotificationsEnabled || !areBrowserNotificationsSupported() || Notification.permission !== 'granted') {
-    return;
-  }
-
-  const now = Date.now();
-  const leadTimeMs = 10 * 60 * 1000;
-  const gracePeriodMs = 60 * 1000;
-  pruneSentBrowserNotificationKeys();
-
-  getActivePlanningEvents().forEach((event) => {
-    const startDate = getPlanningEventStartDate(event);
-    if (!startDate) return;
-
-    const startTime = startDate.getTime();
-    const msUntilStart = startTime - now;
-    if (msUntilStart > leadTimeMs || msUntilStart < -gracePeriodMs) {
-      return;
-    }
-
-    const notificationKey = `${event.id}::${startTime}`;
-    if (sentBrowserNotificationKeys.has(notificationKey)) {
-      return;
-    }
-
-    const minutesUntilStart = Math.max(0, Math.round(msUntilStart / 60000));
-    const body = minutesUntilStart > 1
-      ? `${event.title || t('untitledTask')} commence dans ${minutesUntilStart} minutes.`
-      : minutesUntilStart === 1
-        ? `${event.title || t('untitledTask')} commence dans 1 minute.`
-        : `${event.title || t('untitledTask')} commence maintenant.`;
-
-    deliverBrowserReminderNotification({
-      title: 'Milo',
-      body,
-      notificationKey
-    });
-
-    sentBrowserNotificationKeys.add(notificationKey);
-  });
-}
-
-function startBrowserNotificationChecks() {
-  stopBrowserNotificationChecks();
-
-  const browserNotificationsAvailable = syncBrowserNotificationAvailability();
-
-  if (!browserNotificationsEnabled || !isAccountMode() || !browserNotificationsAvailable) {
-    return;
-  }
-
-  maybeSendBrowserNotifications();
-  browserNotificationIntervalId = window.setInterval(maybeSendBrowserNotifications, 30000);
-}
-
-function deliverBrowserReminderNotification({ title, body, notificationKey }) {
-  new Notification(title, {
-    body,
-    tag: notificationKey,
-    silent: false
-  });
-}
-
-async function setBrowserNotificationsEnabled(nextValue, { showFeedback = true } = {}) {
-  const shouldEnable = Boolean(nextValue);
-
-  if (shouldEnable) {
-    if (!areBrowserNotificationsSupported()) {
-      browserNotificationsEnabled = false;
-      updateBrowserNotificationsUi();
-      persistPreferences();
-      if (showFeedback) showToast(t('toastNotificationsUnsupported'));
-      return false;
-    }
-
-    if (Notification.permission !== 'granted') {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        browserNotificationsEnabled = false;
-        updateBrowserNotificationsUi();
-        persistPreferences();
-        if (showFeedback) showToast(t('toastNotificationsDenied'));
-        return false;
-      }
-    }
-  }
-
-  browserNotificationsEnabled = shouldEnable;
-  updateBrowserNotificationsUi();
-  persistPreferences();
-  startBrowserNotificationChecks();
-
-  if (showFeedback) {
-    showToast(t(shouldEnable ? 'toastNotificationsEnabled' : 'toastNotificationsDisabled'));
-  }
-
-  return true;
 }
 
 function syncAccessStateFromStorage() {
@@ -1662,33 +1965,27 @@ function syncAccessStateFromStorage() {
   }
 }
 
-function activateAccountMode(username, { showToastMessage = true } = {}) {
+async function activateAccountMode(username, { showToastMessage = true } = {}) {
   accessState.mode = 'account';
   accessState.username = normalizeLocalAccessUsername(username);
   accessState.hasLocalAccount = true;
   saveLocalAccessSession({ mode: 'account', username: accessState.username });
   setAccessError('');
-  updateAccessModeUi();
-  startBrowserNotificationChecks();
-  closeSettingsMenu();
-  showHome();
+  await enterAppFromAccessScreen();
 
   if (showToastMessage) {
     showToast(t('toastAccessLoggedIn'));
   }
 }
 
-function activateGuestMode({ showToastMessage = true } = {}) {
+async function activateGuestMode({ showToastMessage = true } = {}) {
   accessState.mode = 'guest';
   accessState.username = '';
   accessState.hasLocalAccount = hasLocalAccessAccount();
   saveLocalAccessSession({ mode: 'guest' });
   resetConversationState();
   setAccessError('');
-  updateAccessModeUi();
-  stopBrowserNotificationChecks();
-  closeSettingsMenu();
-  showHome();
+  await enterAppFromAccessScreen();
 
   if (showToastMessage) {
     showToast(t('toastGuestModeEnabled'));
@@ -1696,7 +1993,6 @@ function activateGuestMode({ showToastMessage = true } = {}) {
 }
 
 function lockAccess() {
-  stopBrowserNotificationChecks();
   clearLocalAccessSession();
   accessState.mode = 'locked';
   accessState.username = '';
@@ -1749,7 +2045,7 @@ async function submitLocalAccess() {
 
     if (accessPasswordInput) accessPasswordInput.value = '';
     showToast(t('toastAccessCreated'));
-    activateAccountMode(username, { showToastMessage: false });
+    await activateAccountMode(username, { showToastMessage: false });
     return;
   }
 
@@ -1763,7 +2059,7 @@ async function submitLocalAccess() {
   }
 
   if (accessPasswordInput) accessPasswordInput.value = '';
-  activateAccountMode(existingAccount.username);
+  await activateAccountMode(existingAccount.username);
 }
 
 function toggleSettingsMenu(event) {
@@ -1818,33 +2114,6 @@ if (themeToggle) {
   });
 }
 
-if (notificationsToggle) {
-  notificationsToggle.addEventListener('click', () => {
-    if (!isAccountMode()) return;
-    setBrowserNotificationsEnabled(!browserNotificationsEnabled);
-  });
-}
-
-if (settingsTestNotificationItem) {
-  settingsTestNotificationItem.addEventListener('click', async () => {
-    if (!isAccountMode()) return;
-
-    const enabled = browserNotificationsEnabled || await setBrowserNotificationsEnabled(true, { showFeedback: false });
-    if (!enabled) return;
-
-    deliverBrowserReminderNotification({
-      title: 'Milo',
-      body: currentLanguage === 'en'
-        ? 'This is a browser notification test from Milo.'
-        : currentLanguage === 'es'
-          ? 'Esta es una prueba de notificacion del navegador de Milo.'
-          : 'Ceci est un test de notification navigateur de Milo.',
-      notificationKey: `test::${Date.now()}`
-    });
-    closeSettingsMenu();
-  });
-}
-
 if (homeDailyNewsList) {
   homeDailyNewsList.addEventListener('pointerdown', handleDailyNewsPointerDown);
   homeDailyNewsList.addEventListener('pointermove', handleDailyNewsPointerMove);
@@ -1862,7 +2131,6 @@ applyTheme(false);
 
 const initialPreferences = loadPreferences();
 applyPreferences(initialPreferences);
-syncBrowserNotificationAvailability();
 
 const initialProfileData = loadProfileData();
 applyProfileData(initialProfileData);
@@ -1873,24 +2141,18 @@ loadPlanningState();
 loadMonthlyPrimaryTasks();
 applyLanguage(initialProfileData.language);
 syncAccessStateFromStorage();
+initializeChatConversations();
 updateProfileSaveState();
+
+if (accessState.mode === 'account' || accessState.mode === 'guest') {
+  ensureActiveChatConversation();
+}
 
 if (accessState.mode === 'account' || accessState.mode === 'guest') {
   updateAccessModeUi();
   showHome();
-  if (accessState.mode === 'account') {
-    startBrowserNotificationChecks();
-  }
 } else {
   lockAccess();
-}
-
-if (document.visibilityState) {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      startBrowserNotificationChecks();
-    }
-  });
 }
 
 avatarPageTriggers.forEach(trigger => {
@@ -2350,19 +2612,20 @@ function openPanelSection(section) {
     'settings': t('panelSettings')
   };
   document.getElementById('panel-title').textContent = titles[section] || t('panelChat');
+  updatePanelTopbarActions();
   
-  // Add fullscreen class for non-chat sections
-  if (section !== 'chat') {
-    panel.classList.add('fullscreen');
-  } else {
-    panel.classList.remove('fullscreen');
-  }
+  // Milo et les vues outils occupent tout l'écran puis se referment par glissement.
+  panel.classList.add('fullscreen');
   
   const sectionEl = document.getElementById('panel-' + section);
   if (sectionEl) {
     sectionEl.style.display = 'flex';
     if (section === 'planning') {
       renderPlanningPanel();
+    } else if (section === 'chat') {
+      ensureActiveChatConversation();
+      renderChatConversationList();
+      renderChatHistory();
     }
   }
   
@@ -2618,13 +2881,42 @@ function renderChatHistory() {
     chatHistoryEl.innerHTML = `<div class="chat-empty">${t('chatEmpty')}</div>`;
     return;
   }
-  chatHistoryEl.innerHTML = chatHistory.map(msg => `<div class="chat-bubble ${msg.role}">${escapeHtml(msg.text)}</div>`).join('');
+  chatHistoryEl.innerHTML = chatHistory.map((msg) => {
+    const text = msg?.isGreeting ? getChatGreetingMessage() : msg.text;
+    const greetingClass = msg?.isGreeting ? ' greeting' : '';
+    return `<div class="chat-bubble ${msg.role}${greetingClass}">${escapeHtml(text)}</div>`;
+  }).join('');
   chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 }
 
 function addMessageToHistory(role, text) {
+  ensureActiveChatConversation();
   chatHistory.push({role, text});
+  syncActiveConversationMessages();
+  renderChatConversationList();
   renderChatHistory();
+}
+
+function handleChatThreadListClick(event) {
+  const actionButton = event.target.closest('[data-chat-thread-action]');
+  if (actionButton instanceof HTMLElement) {
+    const conversationId = actionButton.dataset.chatThreadId || '';
+    const action = actionButton.dataset.chatThreadAction || '';
+
+    if (action === 'rename') {
+      renameChatConversation(conversationId);
+    } else if (action === 'delete') {
+      deleteChatConversation(conversationId);
+    }
+    return;
+  }
+
+  const openButton = event.target.closest('[data-chat-conversation-id]');
+  if (!(openButton instanceof HTMLElement)) return;
+
+  const conversationId = openButton.dataset.chatConversationId || '';
+  if (!conversationId) return;
+  activateChatConversation(conversationId);
 }
 
 function escapeHtml(value) {
@@ -3111,6 +3403,19 @@ function setAgentRequestPending(pending) {
 
 sendBtn.addEventListener('click', sendFromInput);
 textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendFromInput(); });
+if (chatThreadListEl) {
+  chatThreadListEl.addEventListener('click', handleChatThreadListClick);
+}
+if (panelNewChatBtn) {
+  panelNewChatBtn.addEventListener('click', () => {
+    if (isAgentRequestPending) {
+      showToast(t('chatThinking'));
+      return;
+    }
+
+    startNewChatConversation({ shouldFocus: true });
+  });
+}
 if (educationSendBtn) educationSendBtn.addEventListener('click', sendEducationFromInput);
 if (educationTextInput) educationTextInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendEducationFromInput(); });
 miloBtn.addEventListener('click', function() {
@@ -3246,18 +3551,15 @@ function parseReminder(text) {
 }
 
 function getChatSessionId() {
-  const existing = window.localStorage.getItem(chatSessionStorageKey);
-  if (existing) return existing;
-
-  const generated = `milo-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  window.localStorage.setItem(chatSessionStorageKey, generated);
-  return generated;
+  return ensureActiveChatConversation().sessionId;
 }
 
 function getAgentRequestPayload(message) {
   return {
     message,
-    history: chatHistory,
+    history: chatHistory
+      .filter(entry => !entry?.isGreeting)
+      .map(({ role, text }) => ({ role, text })),
     language: currentLanguage,
     sessionId: getChatSessionId(),
     profile: getRuntimeProfileData({ includePhoto: false }),
@@ -4575,9 +4877,6 @@ function sameDay(a, b) {
 function renderPlanningPanel() {
   ensurePlanningEventsStructure();
   persistPlanningState();
-  if (browserNotificationsEnabled && isAccountMode()) {
-    maybeSendBrowserNotifications();
-  }
   initializePlanningInteractions();
   renderHomePage();
   renderProgressPage();

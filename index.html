@@ -25,6 +25,10 @@
     --coral: #f06060;
     --radius: 20px;
     --radius-sm: 12px;
+    --milo-glow: rgba(124,109,240,0.2);
+    --milo-panel: rgba(18,18,28,0.985);
+    --milo-thread: rgba(255,255,255,0.03);
+    --milo-thread-active: rgba(124,109,240,0.22);
   }
 
   html, body {
@@ -45,6 +49,33 @@
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    isolation: isolate;
+  }
+
+  .app::before,
+  .app::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(18px);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .app::before {
+    width: 240px;
+    height: 240px;
+    top: -90px;
+    right: -110px;
+    background: radial-gradient(circle, rgba(124,109,240,0.26), transparent 68%);
+  }
+
+  .app::after {
+    width: 220px;
+    height: 220px;
+    left: -120px;
+    bottom: 110px;
+    background: radial-gradient(circle, rgba(62,207,170,0.14), transparent 68%);
   }
 
   /* Status bar */
@@ -90,9 +121,10 @@
   }
   .app-name {
     font-family: 'DM Serif Display', serif;
-    font-size: 32px;
-    letter-spacing: -0.5px;
+    font-size: 34px;
+    letter-spacing: -0.04em;
     color: var(--text);
+    text-shadow: 0 8px 28px rgba(0,0,0,0.16);
   }
   .app-name em { font-style: italic; color: var(--accent); }
 
@@ -118,18 +150,33 @@
 
   /* Cards */
   .card {
-    background: var(--bg2);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
     border: 0.5px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: 18px 18px 18px 12px;
     padding: 14px 16px;
     margin-bottom: 8px;
     display: flex;
     align-items: flex-start;
     gap: 12px;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
   }
-  .card:active { background: var(--bg3); }
+  .card::after {
+    content: '';
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(124,109,240,0.34), transparent 70%);
+    opacity: 0.9;
+  }
+  .card:active {
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    transform: translateY(1px);
+  }
   .card-dot {
     width: 8px;
     height: 8px;
@@ -273,6 +320,122 @@
 
   .access-screen.open {
     display: flex;
+  }
+
+  .access-launch-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(62,207,170,0.1), transparent 38%),
+      linear-gradient(180deg, #0e0e12 0%, #14141c 54%, #0c0c11 100%);
+    transition: opacity 0.24s ease, visibility 0s linear 0.24s;
+  }
+
+  .access-launch-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  .access-launch-overlay.fade-out {
+    opacity: 0;
+  }
+
+  .access-launch-word {
+    position: relative;
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 0.02em;
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(82px, 27vw, 158px);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    color: #f5f3ff;
+    text-shadow: 0 14px 50px rgba(0,0,0,0.28);
+    transform-origin: var(--access-launch-origin-x, 30%) var(--access-launch-origin-y, 8%);
+    transition: transform 1.18s cubic-bezier(0.12,0.72,0,1), opacity 0.36s ease, filter 0.36s ease;
+  }
+
+  .access-launch-overlay.pulse .access-launch-word {
+    animation: accessLaunchHeartbeat 1.72s cubic-bezier(0.33,0,0.16,1) forwards;
+  }
+
+  .access-launch-letter {
+    position: relative;
+    display: inline-block;
+  }
+
+  .access-launch-letter.i {
+    color: #d8d1ff;
+    margin-right: 0.02em;
+  }
+
+  .access-launch-portal {
+    position: absolute;
+    left: 50%;
+    top: -0.11em;
+    width: 0.24em;
+    height: 0.24em;
+    border-radius: 50%;
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+    border: 0.038em solid rgba(245,243,255,0.96);
+    background: transparent;
+    box-shadow: none;
+    transform-origin: 50% 50%;
+    transition: transform 1.18s cubic-bezier(0.08,0.78,0,1), opacity 0.16s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .access-launch-overlay.spin .access-launch-portal {
+    animation: accessLaunchDotSpin 1.72s linear forwards;
+  }
+
+  .access-launch-overlay.zoom .access-launch-word {
+    transform: translate(var(--access-launch-pan-x, 0px), var(--access-launch-pan-y, 0px)) scale(38);
+    opacity: 1;
+    filter: blur(0.2px);
+  }
+
+  .access-launch-overlay.zoom .access-launch-portal {
+    opacity: 1;
+    transform: translateX(-50%) scale(3000);
+    border-color: rgba(245,243,255,0.6);
+    box-shadow: none;
+  }
+
+  @keyframes accessLaunchHeartbeat {
+    0% { transform: scale(0.96); }
+    14% { transform: scale(1); }
+    28% { transform: scale(0.98); }
+    44% { transform: scale(1.04); }
+    60% { transform: scale(0.995); }
+    78% { transform: scale(1.06); }
+    90% { transform: scale(1.015); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes accessLaunchDotSpin {
+    0% { transform: translateX(-50%) rotate(0deg) scale(0.92); }
+    50% { transform: translateX(-50%) rotate(300deg) scale(1.08); }
+    100% { transform: translateX(-50%) rotate(720deg) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .access-launch-overlay,
+    .access-launch-word,
+    .access-launch-portal {
+      transition: none;
+      animation: none;
+    }
   }
 
   .access-shell {
@@ -530,15 +693,17 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--bg2);
+    background:
+      linear-gradient(180deg, rgba(124,109,240,0.1), rgba(18,18,28,0.04) 18%),
+      var(--milo-panel);
     border-top: 0.5px solid rgba(124,109,240,0.24);
     border-radius: 28px 28px 0 0;
-    padding: 12px 18px 100px;
+    padding: 12px 18px 88px;
     z-index: 45;
     transform: translateY(100%);
     transition: transform 0.34s cubic-bezier(0.32,0,0.15,1);
     min-height: 320px;
-    max-height: 78vh;
+    max-height: 86vh;
     display: flex;
     flex-direction: column;
     pointer-events: none;
@@ -574,16 +739,53 @@
   }
 
   .panel-topbar {
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 36px;
     margin-bottom: 12px;
   }
 
+  .panel-topbar-action {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  }
+
+  .panel-topbar-action:hover {
+    border-color: rgba(124,109,240,0.35);
+    background: rgba(124,109,240,0.1);
+  }
+
+  .panel-topbar-action:active {
+    transform: translateY(-50%) scale(0.98);
+  }
+
+  .panel-topbar-action.hidden {
+    display: none;
+  }
+
   .panel-title {
+    font-family: 'DM Serif Display', serif;
     font-size: 16px;
     font-weight: 500;
     color: var(--text);
+    letter-spacing: -0.02em;
   }
 
   .panel-section {
@@ -617,7 +819,7 @@
   .chat-bubble {
     max-width: 84%;
     padding: 10px 12px;
-    border-radius: 16px;
+    border-radius: 18px 18px 18px 10px;
     font-size: 13px;
     line-height: 1.45;
     word-break: break-word;
@@ -632,9 +834,194 @@
 
   .chat-bubble.milo {
     align-self: flex-start;
-    background: var(--bg3);
-    border: 0.5px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 0.5px solid rgba(124,109,240,0.16);
     color: var(--text);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.1);
+  }
+
+  .chat-bubble.greeting {
+    position: relative;
+    padding-left: 16px;
+  }
+
+  .chat-bubble.greeting::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--accent), rgba(62,207,170,0.75));
+  }
+
+  .milo-chat-shell {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 116px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .milo-thread-rail {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 22px;
+    border: 0.5px solid rgba(124,109,240,0.18);
+    background: linear-gradient(180deg, rgba(124,109,240,0.12), rgba(255,255,255,0.03));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .milo-thread-rail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .milo-thread-rail-kicker {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+  }
+
+  .milo-thread-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scrollbar-width: none;
+  }
+
+  .milo-thread-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .milo-thread-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 16px;
+    border: 0.5px solid rgba(255,255,255,0.06);
+    background: var(--milo-thread);
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  }
+
+  .milo-thread-card.active {
+    background: var(--milo-thread-active);
+    border-color: rgba(124,109,240,0.28);
+    transform: translateY(-1px);
+  }
+
+  .milo-thread-open {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .milo-thread-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .milo-thread-preview {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.35;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .milo-thread-meta {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.03em;
+  }
+
+  .milo-thread-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .milo-thread-action {
+    flex: 1;
+    height: 28px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .milo-thread-action.delete {
+    color: #ffb0b8;
+  }
+
+  .milo-chat-main {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    border-radius: 24px;
+    border: 0.5px solid rgba(124,109,240,0.18);
+    background:
+      radial-gradient(circle at top right, rgba(124,109,240,0.12), transparent 30%),
+      linear-gradient(180deg, rgba(22,22,34,0.96), rgba(18,18,28,0.985));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .milo-chat-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .milo-chat-banner-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent), rgba(62,207,170,0.8));
+    color: white;
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    box-shadow: 0 10px 24px var(--milo-glow);
+  }
+
+  .milo-chat-banner-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(124,109,240,0.4), transparent 78%);
   }
 
   .panel-state-label {
@@ -1500,6 +1887,25 @@
     --text3: rgba(26,26,26,0.35);
     --accent: #738FFF;
     --accent2: rgba(173,224,255,0.42);
+    --milo-glow: rgba(115,143,255,0.18);
+    --milo-panel: rgba(250,252,252,0.992);
+    --milo-thread: rgba(255,255,255,0.5);
+    --milo-thread-active: rgba(115,143,255,0.18);
+  }
+
+  @media (max-width: 380px) {
+    .milo-chat-shell {
+      grid-template-columns: 104px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .milo-thread-rail {
+      padding: 8px;
+    }
+
+    .milo-chat-main {
+      padding: 10px;
+    }
   }
 
   /* Education page */
@@ -2057,6 +2463,15 @@
     </div>
   </div>
 
+  <div class="access-launch-overlay" id="access-launch-overlay" aria-hidden="true">
+    <div class="access-launch-word" id="access-launch-word" aria-hidden="true">
+      <span class="access-launch-letter">M</span>
+      <span class="access-launch-letter i">ı<span class="access-launch-portal" id="access-launch-portal"></span></span>
+      <span class="access-launch-letter">l</span>
+      <span class="access-launch-letter">o</span>
+    </div>
+  </div>
+
   <!-- PAGE: Home -->
   <div id="home-page">
   <div class="status-bar">
@@ -2366,13 +2781,6 @@
       <div class="toggle-switch" id="theme-toggle"></div>
     </div>
 
-    <div class="theme-toggle" id="notifications-setting-row">
-      <span id="notifications-label">Notifications navigateur</span>
-      <div class="toggle-switch" id="notifications-toggle"></div>
-    </div>
-
-    <button class="settings-menu-item" id="settings-test-notification-item">Tester les notifications</button>
-
     <button class="settings-menu-item" id="settings-preferences-item">Préférences</button>
     <button class="settings-menu-item" id="settings-logout-item">Déconnexion</button>
   </div>
@@ -2382,13 +2790,28 @@
     <div class="panel-handle" id="panel-handle" aria-label="Fermer le panneau"></div>
 
     <div class="panel-topbar">
+      <button type="button" class="panel-topbar-action hidden" id="panel-new-chat-btn">Nouveau chat</button>
       <div class="panel-title" id="panel-title">Panel</div>
     </div>
 
     <!-- Chat section -->
     <div id="panel-chat" class="panel-section" style="display: none;">
-      <div class="chat-history" id="chat-history">
-        <div class="chat-empty" id="chat-empty-initial">Aucun échange pour le moment</div>
+      <div class="milo-chat-shell">
+        <aside class="milo-thread-rail">
+          <div class="milo-thread-rail-header">
+            <div class="milo-thread-rail-kicker" id="chat-threads-label">Discussions</div>
+          </div>
+          <div class="milo-thread-list" id="chat-thread-list"></div>
+        </aside>
+        <div class="milo-chat-main">
+          <div class="milo-chat-banner" aria-hidden="true">
+            <span class="milo-chat-banner-mark">M</span>
+            <span class="milo-chat-banner-line"></span>
+          </div>
+          <div class="chat-history" id="chat-history">
+            <div class="chat-empty" id="chat-empty-initial">Aucun échange pour le moment</div>
+          </div>
+        </div>
       </div>
       <div class="panel-state-label" id="panel-label">Écris un message ou parle à Milo</div>
       <div class="input-row">
