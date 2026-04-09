@@ -60,8 +60,18 @@
     const educationInstructionsInput = document.getElementById('education-instructions');
     const educationSheetLengthSelect = document.getElementById('education-sheet-length');
     const educationSheetLengthWrap = document.getElementById('education-sheet-length-wrap');
+    const educationQuizCountSelect = document.getElementById('education-quiz-count');
+    const educationQuizCountWrap = document.getElementById('education-quiz-count-wrap');
     const educationGoBtn = document.getElementById('education-go-btn');
     const educationDownloadLatestBtn = document.getElementById('education-download-latest-btn');
+    const educationQuizPage = document.getElementById('education-quiz-page');
+    const educationQuizPageBody = document.getElementById('education-quiz-page-body');
+    const educationQuizPageActions = document.getElementById('education-quiz-page-actions');
+    const educationQuizPageProgress = document.getElementById('education-quiz-page-progress');
+    const educationQuizPageKicker = document.getElementById('education-quiz-page-kicker');
+    const educationQuizCloseBtn = document.getElementById('education-quiz-close-btn');
+    const educationQuizHistoryLabel = document.getElementById('education-quiz-history-label');
+    const educationQuizHistoryList = document.getElementById('education-quiz-history-list');
     const educationActionButtons = document.querySelectorAll('[data-education-action]');
     const clearDocBtn = document.getElementById('clear-doc-btn');
     const panelDragState = {
@@ -124,6 +134,7 @@
     const activeChatConversationStorageKey = 'milo.chatActiveConversationId';
     const educationDocumentsStorageKey = 'milo.educationDocuments';
     const educationSourceStorageKey = 'milo.educationSourceText';
+    const educationQuizHistoryStorageKey = 'milo.educationQuizHistory';
     const planningStorageKey = 'milo.planning';
     const monthlyPrimaryTasksStorageKey = 'milo.monthlyPrimaryTasks';
     const localAccessAccountStorageKey = 'milo.localAccessAccount';
@@ -143,7 +154,35 @@
     let selectedEducationDocumentId = null;
     let selectedEducationAction = 'explain';
     let selectedEducationSheetLength = 'medium';
+    let selectedEducationQuizQuestionCount = 5;
     let lastEducationTaskSignature = '';
+    let educationQuizUiState = {};
+    let educationQuizHistory = [];
+    let educationQuizPageState = {
+      open: false,
+      loading: false,
+      error: '',
+      questions: [],
+      currentQuestionIndex: 0,
+      score: 0,
+      answers: [],
+      feedback: null,
+      completed: false,
+      lastPrompt: '',
+      historySaved: false,
+      historyTitle: ''
+    };
+    let educationQuizHistorySwipeState = {
+      swipedEntryId: '',
+      pointerId: null,
+      captureTarget: null,
+      startX: 0,
+      deltaX: 0,
+      startOffset: 0,
+      currentOffset: 0,
+      activeEntryId: '',
+      dragging: false
+    };
     let monthlyPrimaryTasks = [];
     let pendingMonthlyTaskPrompt = null;
     let dailyNewsTheme = 'none';
@@ -262,10 +301,29 @@
         educationInstructionsLabel: 'Indications',
         educationInstructionsPlaceholder: 'Optionnel : précise le ton, le niveau, les points à détailler ou les éléments à éviter.',
         educationSheetLengthLabel: 'Format de fiche',
+        educationQuizCountLabel: 'Nombre de questions',
         educationSheetShort: 'Court',
         educationSheetMedium: 'Moyen',
         educationSheetLong: 'Long',
         educationGo: 'Go',
+        educationQuizTitle: 'Quiz Milo',
+        educationQuizLoading: 'Milo prépare ton quiz…',
+        educationQuizInvalidCount: 'Choisis au moins 1 question pour lancer le quiz.',
+        educationQuizCompleted: 'Quiz terminé',
+        educationQuizRestartSame: 'Recommencer',
+        educationQuizRegenerate: 'Régénérer',
+        educationQuizExit: 'Quitter',
+        educationQuizProgress: 'Question {current}/{total}',
+        educationQuizCheck: 'Corriger',
+        educationQuizRetry: 'Rejouer',
+        educationQuizScore: '{score}/{total} bonnes réponses',
+        educationQuizHistoryLabel: 'Historique des quiz',
+        educationQuizHistoryEmpty: 'Aucun quiz terminé pour le moment.',
+        educationQuizHistoryMeta: '{count} questions · {date}',
+        educationQuizQuestion: 'Question {number}',
+        educationQuizCorrect: 'Bonne réponse',
+        educationQuizIncorrect: 'Réponse incorrecte',
+        educationQuizIncomplete: 'Réponds à toutes les questions avant de corriger.',
         educationDownloadLatest: 'Télécharger la réponse PDF',
         clearText: 'Effacer le texte',
         educationNoSource: 'Ajoute un texte ou sélectionne un document avant de lancer une consigne d\'étude.',
@@ -475,10 +533,29 @@
         educationInstructionsLabel: 'Instructions',
         educationInstructionsPlaceholder: 'Optional: specify the tone, level, points to detail, or elements to avoid.',
         educationSheetLengthLabel: 'Sheet format',
+        educationQuizCountLabel: 'Number of questions',
         educationSheetShort: 'Short',
         educationSheetMedium: 'Medium',
         educationSheetLong: 'Long',
         educationGo: 'Go',
+        educationQuizTitle: 'Milo Quiz',
+        educationQuizLoading: 'Milo is building your quiz…',
+        educationQuizInvalidCount: 'Choose at least 1 question to start the quiz.',
+        educationQuizCompleted: 'Quiz completed',
+        educationQuizRestartSame: 'Restart',
+        educationQuizRegenerate: 'Regenerate',
+        educationQuizExit: 'Exit',
+        educationQuizProgress: 'Question {current}/{total}',
+        educationQuizCheck: 'Check answers',
+        educationQuizRetry: 'Try again',
+        educationQuizScore: '{score}/{total} correct answers',
+        educationQuizHistoryLabel: 'Quiz history',
+        educationQuizHistoryEmpty: 'No completed quiz yet.',
+        educationQuizHistoryMeta: '{count} questions · {date}',
+        educationQuizQuestion: 'Question {number}',
+        educationQuizCorrect: 'Correct answer',
+        educationQuizIncorrect: 'Incorrect answer',
+        educationQuizIncomplete: 'Answer every question before checking.',
         educationDownloadLatest: 'Download response PDF',
         clearText: 'Clear text',
         educationNoSource: 'Add text or select a document before asking for a study task.',
@@ -688,10 +765,29 @@
         educationInstructionsLabel: 'Indicaciones',
         educationInstructionsPlaceholder: 'Opcional: precisa el tono, el nivel, los puntos que desarrollar o lo que hay que evitar.',
         educationSheetLengthLabel: 'Formato de ficha',
+        educationQuizCountLabel: 'Numero de preguntas',
         educationSheetShort: 'Corto',
         educationSheetMedium: 'Medio',
         educationSheetLong: 'Largo',
         educationGo: 'Go',
+        educationQuizTitle: 'Quiz Milo',
+        educationQuizLoading: 'Milo esta preparando tu quiz...',
+        educationQuizInvalidCount: 'Elige al menos 1 pregunta para iniciar el quiz.',
+        educationQuizCompleted: 'Quiz terminado',
+        educationQuizRestartSame: 'Reiniciar',
+        educationQuizRegenerate: 'Regenerar',
+        educationQuizExit: 'Salir',
+        educationQuizProgress: 'Pregunta {current}/{total}',
+        educationQuizCheck: 'Corregir',
+        educationQuizRetry: 'Reintentar',
+        educationQuizScore: '{score}/{total} respuestas correctas',
+        educationQuizHistoryLabel: 'Historial de quizzes',
+        educationQuizHistoryEmpty: 'Todavia no hay ningun quiz terminado.',
+        educationQuizHistoryMeta: '{count} preguntas · {date}',
+        educationQuizQuestion: 'Pregunta {number}',
+        educationQuizCorrect: 'Respuesta correcta',
+        educationQuizIncorrect: 'Respuesta incorrecta',
+        educationQuizIncomplete: 'Responde a todas las preguntas antes de corregir.',
         educationDownloadLatest: 'Descargar la respuesta en PDF',
         clearText: 'Borrar texto',
         educationNoSource: 'Agrega un texto o selecciona un documento antes de pedir una tarea de estudio.',
@@ -1240,6 +1336,8 @@ function applyTranslations() {
   setText('education-action-quiz', 'educationActionQuiz');
   setText('education-instructions-label', 'educationInstructionsLabel');
   setText('education-sheet-length-label', 'educationSheetLengthLabel');
+  setText('education-quiz-count-label', 'educationQuizCountLabel');
+  setText('education-quiz-history-label', 'educationQuizHistoryLabel');
   setText('education-sheet-option-short', 'educationSheetShort');
   setText('education-sheet-option-medium', 'educationSheetMedium');
   setText('education-sheet-option-long', 'educationSheetLong');
@@ -1248,6 +1346,10 @@ function applyTranslations() {
   if (educationFilesToggle) {
     educationFilesToggle.setAttribute('aria-label', t('educationFilesToggleLabel'));
     educationFilesToggle.setAttribute('title', t('educationFilesToggleLabel'));
+  }
+  if (educationQuizCloseBtn) {
+    educationQuizCloseBtn.setAttribute('aria-label', t('educationQuizExit'));
+    educationQuizCloseBtn.setAttribute('title', t('educationQuizExit'));
   }
   setText('education-dropzone-title', 'educationDropzoneTitle');
   setText('education-dropzone-help', 'educationDropzoneHelp');
@@ -1305,6 +1407,8 @@ function applyTranslations() {
   updateAccessModeUi();
   updateFloatingPrimaryButton();
   renderEducationComposerState();
+  renderEducationQuizHistory();
+  renderEducationQuizPage();
   setPanelState('idle');
   renderChatConversationList();
   renderChatHistory();
@@ -2137,6 +2241,7 @@ applyProfileData(initialProfileData);
 savedProfileSnapshot = profileDataToSnapshot(initialProfileData);
 initializeProfileForm();
 loadEducationState();
+loadEducationQuizHistory();
 loadPlanningState();
 loadMonthlyPrimaryTasks();
 applyLanguage(initialProfileData.language);
@@ -2289,6 +2394,13 @@ if (educationSheetLengthSelect) {
   });
 }
 
+if (educationQuizCountSelect) {
+  educationQuizCountSelect.addEventListener('change', (event) => {
+    selectedEducationQuizQuestionCount = Number(event.target.value);
+    persistEducationState();
+  });
+}
+
 educationActionButtons.forEach((button) => {
   button.addEventListener('click', () => {
     setEducationAction(button.dataset.educationAction);
@@ -2301,6 +2413,23 @@ if (educationGoBtn) {
 
 if (educationDownloadLatestBtn) {
   educationDownloadLatestBtn.addEventListener('click', downloadLatestEducationResponsePdf);
+}
+
+if (educationQuizCloseBtn) {
+  educationQuizCloseBtn.addEventListener('click', closeEducationQuizPage);
+}
+
+if (educationQuizHistoryList) {
+  educationQuizHistoryList.addEventListener('pointerdown', handleEducationQuizHistoryPointerDown);
+  educationQuizHistoryList.addEventListener('pointermove', handleEducationQuizHistoryPointerMove);
+  educationQuizHistoryList.addEventListener('pointerup', handleEducationQuizHistoryPointerUp);
+  educationQuizHistoryList.addEventListener('pointercancel', handleEducationQuizHistoryPointerCancel);
+  educationQuizHistoryList.addEventListener('click', (event) => {
+    const deleteButton = event.target.closest('[data-delete-education-quiz-id]');
+    if (!deleteButton) return;
+    event.stopPropagation();
+    deleteEducationQuizHistoryEntry(deleteButton.dataset.deleteEducationQuizId);
+  });
 }
 
 if (clearDocBtn) {
@@ -2317,6 +2446,45 @@ if (uploadDocumentButton && educationDocumentInput) {
 }
 
 document.addEventListener('click', (event) => {
+  const quizPageOption = event.target.closest('[data-education-quiz-page-option]');
+  if (quizPageOption) {
+    answerEducationQuizPage(quizPageOption.dataset.educationQuizPageOption || '');
+    return;
+  }
+
+  const quizPageAction = event.target.closest('[data-education-quiz-page-action]');
+  if (quizPageAction) {
+    const action = quizPageAction.dataset.educationQuizPageAction || '';
+    if (action === 'restart') {
+      restartEducationQuizPage();
+    } else if (action === 'regenerate') {
+      requestEducationQuiz({ regenerate: true });
+    }
+    return;
+  }
+
+  const quizOptionButton = event.target.closest('[data-education-quiz-option]');
+  if (quizOptionButton) {
+    selectEducationQuizOption(
+      Number(quizOptionButton.dataset.educationQuizMessageIndex),
+      Number(quizOptionButton.dataset.educationQuizQuestionIndex),
+      quizOptionButton.dataset.educationQuizOptionKey || ''
+    );
+    return;
+  }
+
+  const quizSubmitButton = event.target.closest('[data-education-quiz-submit]');
+  if (quizSubmitButton) {
+    submitEducationQuiz(Number(quizSubmitButton.dataset.educationQuizMessageIndex));
+    return;
+  }
+
+  const quizResetButton = event.target.closest('[data-education-quiz-reset]');
+  if (quizResetButton) {
+    resetEducationQuiz(Number(quizResetButton.dataset.educationQuizMessageIndex));
+    return;
+  }
+
   const downloadButton = event.target.closest('[data-download-education-message-index]');
   if (downloadButton) {
     downloadEducationMessagePdf(Number(downloadButton.dataset.downloadEducationMessageIndex));
@@ -3040,8 +3208,723 @@ function getLatestEducationMiloMessageIndex() {
   return -1;
 }
 
+function parseEducationQuiz(text) {
+  const normalizedText = stripEducationFormatting(text).replace(/\r\n/g, '\n').trim();
+  if (!normalizedText || !/(?:^|\n)(?:ANSWER|R[EÉ]PONSE|RESPUESTA)\s*:/im.test(normalizedText)) {
+    return null;
+  }
+
+  const questions = [];
+  let currentQuestion = null;
+  let currentField = '';
+
+  const pushCurrentQuestion = () => {
+    if (!currentQuestion) return;
+    if (currentQuestion.prompt && currentQuestion.options.length >= 2 && currentQuestion.answerKey) {
+      questions.push({
+        prompt: currentQuestion.prompt.trim(),
+        options: currentQuestion.options.map((option) => ({
+          key: option.key,
+          text: option.text.trim()
+        })),
+        answerKey: currentQuestion.answerKey,
+        explanation: currentQuestion.explanation.trim()
+      });
+    }
+    currentQuestion = null;
+    currentField = '';
+  };
+
+  normalizedText.split('\n').forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) {
+      if (currentField === 'explanation') currentField = 'explanation';
+      return;
+    }
+
+    const questionMatch = /^(?:Q(?:UESTION)?\s*\d+|\d+[\)\.:-])\s*(.+)$/i.exec(line);
+    if (questionMatch) {
+      pushCurrentQuestion();
+      currentQuestion = {
+        prompt: questionMatch[1].trim(),
+        options: [],
+        answerKey: '',
+        explanation: ''
+      };
+      currentField = 'prompt';
+      return;
+    }
+
+    if (!currentQuestion) {
+      return;
+    }
+
+    const optionMatch = /^([A-D])[\)\.:-]\s*(.+)$/i.exec(line);
+    if (optionMatch) {
+      currentQuestion.options.push({
+        key: optionMatch[1].toUpperCase(),
+        text: optionMatch[2].trim()
+      });
+      currentField = 'option';
+      return;
+    }
+
+    const answerMatch = /^(?:ANSWER|R[EÉ]PONSE|RESPUESTA)\s*[:\-]\s*([A-D])\b/i.exec(line);
+    if (answerMatch) {
+      currentQuestion.answerKey = answerMatch[1].toUpperCase();
+      currentField = 'answer';
+      return;
+    }
+
+    const explanationMatch = /^(?:EXPLANATION|EXPLICATION|EXPLICACION)\s*[:\-]\s*(.+)$/i.exec(line);
+    if (explanationMatch) {
+      currentQuestion.explanation = explanationMatch[1].trim();
+      currentField = 'explanation';
+      return;
+    }
+
+    if (currentField === 'prompt') {
+      currentQuestion.prompt = `${currentQuestion.prompt} ${line}`.trim();
+    } else if (currentField === 'option' && currentQuestion.options.length > 0) {
+      const lastOption = currentQuestion.options[currentQuestion.options.length - 1];
+      lastOption.text = `${lastOption.text} ${line}`.trim();
+    } else if (currentField === 'explanation') {
+      currentQuestion.explanation = `${currentQuestion.explanation} ${line}`.trim();
+    }
+  });
+
+  pushCurrentQuestion();
+
+  return questions.length ? { questions } : null;
+}
+
+function openEducationQuizPage() {
+  educationQuizPageState.open = true;
+  if (educationQuizPage) {
+    educationQuizPage.classList.add('open');
+    educationQuizPage.setAttribute('aria-hidden', 'false');
+  }
+  renderEducationQuizPage();
+}
+
+function closeEducationQuizPage() {
+  educationQuizPageState.open = false;
+  if (educationQuizPage) {
+    educationQuizPage.classList.remove('open');
+    educationQuizPage.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function resetEducationQuizPageState() {
+  educationQuizPageState = {
+    open: false,
+    loading: false,
+    error: '',
+    questions: [],
+    currentQuestionIndex: 0,
+    score: 0,
+    answers: [],
+    feedback: null,
+    completed: false,
+    lastPrompt: '',
+    historySaved: false,
+    historyTitle: ''
+  };
+}
+
+function loadEducationQuizHistory() {
+  try {
+    const rawHistory = window.localStorage.getItem(educationQuizHistoryStorageKey);
+    const parsedHistory = rawHistory ? JSON.parse(rawHistory) : [];
+    educationQuizHistory = Array.isArray(parsedHistory) ? parsedHistory.filter(Boolean) : [];
+  } catch {
+    educationQuizHistory = [];
+  }
+}
+
+function persistEducationQuizHistory() {
+  window.localStorage.setItem(educationQuizHistoryStorageKey, JSON.stringify(educationQuizHistory));
+}
+
+function cleanEducationQuizHistoryTitle(title, maxLength = 72) {
+  const normalizedTitle = String(title || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s:;,.!?-]+|[\s:;,.!?-]+$/g, '')
+    .trim();
+
+  if (!normalizedTitle) return '';
+  if (normalizedTitle.length <= maxLength) return normalizedTitle;
+
+  const truncatedTitle = normalizedTitle.slice(0, maxLength + 1);
+  const lastSpaceIndex = truncatedTitle.lastIndexOf(' ');
+  const safeTitle = lastSpaceIndex >= Math.floor(maxLength * 0.6)
+    ? truncatedTitle.slice(0, lastSpaceIndex)
+    : truncatedTitle.slice(0, maxLength);
+
+  return `${safeTitle.trim()}…`;
+}
+
+function getEducationQuizHistoryTitle() {
+  const selectedDocument = educationDocuments.find((document) => document.id === selectedEducationDocumentId);
+  if (selectedDocument?.name) {
+    return cleanEducationQuizHistoryTitle(selectedDocument.name.replace(/\.[a-z0-9]+$/i, ''));
+  }
+
+  const sourceText = (educationSourceTextArea?.value || '').trim();
+  if (sourceText) {
+    const normalizedSourceText = sourceText
+      .replace(/\s+/g, ' ')
+      .replace(/^[-*•\d.)\s]+/, '')
+      .trim();
+    const titleCandidates = normalizedSourceText
+      .split(/(?<=[.!?])\s+|\s[:;-]\s+/)
+      .map((segment) => cleanEducationQuizHistoryTitle(segment, 72))
+      .filter(Boolean);
+    const bestCandidate = titleCandidates.find((segment) => segment.length >= 24) || titleCandidates[0] || normalizedSourceText;
+    return cleanEducationQuizHistoryTitle(bestCandidate, 72);
+  }
+
+  return t('educationQuizTitle');
+}
+
+function resetEducationQuizHistorySwipeState() {
+  if (educationQuizHistorySwipeState.captureTarget?.releasePointerCapture && educationQuizHistorySwipeState.pointerId !== null) {
+    try {
+      educationQuizHistorySwipeState.captureTarget.releasePointerCapture(educationQuizHistorySwipeState.pointerId);
+    } catch {}
+  }
+
+  educationQuizHistorySwipeState.pointerId = null;
+  educationQuizHistorySwipeState.captureTarget = null;
+  educationQuizHistorySwipeState.startX = 0;
+  educationQuizHistorySwipeState.deltaX = 0;
+  educationQuizHistorySwipeState.startOffset = 0;
+  educationQuizHistorySwipeState.currentOffset = 0;
+  educationQuizHistorySwipeState.activeEntryId = '';
+  educationQuizHistorySwipeState.dragging = false;
+}
+
+function setEducationQuizHistoryReveal(entryId, revealRatio) {
+  const itemElement = educationQuizHistoryList?.querySelector(`[data-quiz-history-id="${entryId}"]`);
+  if (!itemElement) return;
+
+  const clampedRatio = Math.max(0, Math.min(1, revealRatio));
+  const maxOffset = 92;
+  itemElement.style.setProperty('--swipe-offset', `${clampedRatio * maxOffset}px`);
+  itemElement.style.setProperty('--actions-offset', `${maxOffset - (clampedRatio * maxOffset)}px`);
+  itemElement.style.setProperty('--actions-opacity', `${clampedRatio}`);
+}
+
+function deleteEducationQuizHistoryEntry(entryId) {
+  educationQuizHistory = educationQuizHistory.filter((entry) => entry.id !== entryId);
+  if (educationQuizHistorySwipeState.swipedEntryId === entryId) {
+    educationQuizHistorySwipeState.swipedEntryId = '';
+  }
+  persistEducationQuizHistory();
+  renderEducationQuizHistory();
+}
+
+function handleEducationQuizHistoryPointerDown(event) {
+  const trigger = event.target.closest('.education-quiz-history-card');
+  if (!trigger) return;
+
+  const itemElement = trigger.closest('.education-quiz-history-item');
+  if (!itemElement?.dataset.quizHistoryId) return;
+
+  educationQuizHistorySwipeState.pointerId = event.pointerId;
+  educationQuizHistorySwipeState.captureTarget = itemElement;
+  educationQuizHistorySwipeState.startX = event.clientX;
+  educationQuizHistorySwipeState.deltaX = 0;
+  educationQuizHistorySwipeState.activeEntryId = itemElement.dataset.quizHistoryId;
+  educationQuizHistorySwipeState.dragging = false;
+  educationQuizHistorySwipeState.startOffset = educationQuizHistorySwipeState.swipedEntryId === itemElement.dataset.quizHistoryId ? 92 : 0;
+  educationQuizHistorySwipeState.currentOffset = educationQuizHistorySwipeState.startOffset;
+
+  if (typeof itemElement.setPointerCapture === 'function') {
+    itemElement.setPointerCapture(event.pointerId);
+  }
+}
+
+function handleEducationQuizHistoryPointerMove(event) {
+  if (educationQuizHistorySwipeState.pointerId !== event.pointerId || !educationQuizHistorySwipeState.activeEntryId) return;
+
+  const deltaX = event.clientX - educationQuizHistorySwipeState.startX;
+  educationQuizHistorySwipeState.deltaX = deltaX;
+  if (Math.abs(deltaX) > 12) {
+    educationQuizHistorySwipeState.dragging = true;
+  }
+
+  const maxOffset = 92;
+  const currentOffset = Math.max(0, Math.min(maxOffset, educationQuizHistorySwipeState.startOffset - deltaX));
+  educationQuizHistorySwipeState.currentOffset = currentOffset;
+  setEducationQuizHistoryReveal(educationQuizHistorySwipeState.activeEntryId, currentOffset / maxOffset);
+}
+
+function handleEducationQuizHistoryPointerUp(event) {
+  if (educationQuizHistorySwipeState.pointerId !== event.pointerId || !educationQuizHistorySwipeState.activeEntryId) return;
+
+  const targetEntryId = educationQuizHistorySwipeState.activeEntryId;
+  const shouldReveal = educationQuizHistorySwipeState.currentOffset > 44;
+  const wasDragging = educationQuizHistorySwipeState.dragging;
+
+  if (shouldReveal) {
+    educationQuizHistorySwipeState.swipedEntryId = targetEntryId;
+    renderEducationQuizHistory();
+  } else if (!wasDragging && educationQuizHistorySwipeState.swipedEntryId && educationQuizHistorySwipeState.swipedEntryId !== targetEntryId) {
+    educationQuizHistorySwipeState.swipedEntryId = '';
+    renderEducationQuizHistory();
+  } else if (educationQuizHistorySwipeState.swipedEntryId === targetEntryId) {
+    educationQuizHistorySwipeState.swipedEntryId = '';
+    renderEducationQuizHistory();
+  } else {
+    setEducationQuizHistoryReveal(targetEntryId, 0);
+  }
+
+  resetEducationQuizHistorySwipeState();
+}
+
+function handleEducationQuizHistoryPointerCancel() {
+  if (educationQuizHistorySwipeState.activeEntryId) {
+    if (educationQuizHistorySwipeState.swipedEntryId === educationQuizHistorySwipeState.activeEntryId) {
+      setEducationQuizHistoryReveal(educationQuizHistorySwipeState.activeEntryId, 1);
+    } else {
+      setEducationQuizHistoryReveal(educationQuizHistorySwipeState.activeEntryId, 0);
+    }
+  }
+
+  resetEducationQuizHistorySwipeState();
+}
+
+function renderEducationQuizHistory() {
+  if (!educationQuizHistoryList || !educationQuizHistoryLabel) return;
+
+  const isVisible = selectedEducationAction === 'quiz';
+  educationQuizHistoryLabel.style.display = isVisible ? 'block' : 'none';
+  educationQuizHistoryList.style.display = isVisible ? 'flex' : 'none';
+  if (!isVisible) {
+    educationQuizHistorySwipeState.swipedEntryId = '';
+    return;
+  }
+
+  if (!educationQuizHistory.length) {
+    educationQuizHistorySwipeState.swipedEntryId = '';
+    educationQuizHistoryList.innerHTML = `<div class="education-quiz-history-empty">${escapeHtml(t('educationQuizHistoryEmpty'))}</div>`;
+    return;
+  }
+
+  educationQuizHistoryList.innerHTML = educationQuizHistory.map((entry) => {
+    const formattedDate = new Intl.DateTimeFormat(getCurrentLocale(), {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(entry.completedAt));
+    const isSwiped = educationQuizHistorySwipeState.swipedEntryId === entry.id ? 'swiped' : '';
+    const swipeOffset = isSwiped ? '92px' : '0px';
+    const actionsOffset = isSwiped ? '0px' : '92px';
+    const actionsOpacity = isSwiped ? '1' : '0';
+
+    return `
+      <div class="education-quiz-history-item ${isSwiped}" data-quiz-history-id="${escapeHtml(entry.id)}" style="--swipe-offset: ${swipeOffset}; --actions-offset: ${actionsOffset}; --actions-opacity: ${actionsOpacity};">
+        <div class="education-quiz-history-track">
+          <div class="education-quiz-history-actions">
+            <button type="button" class="education-quiz-history-action delete" data-delete-education-quiz-id="${escapeHtml(entry.id)}" aria-label="${escapeHtml(t('chatDeleteAction'))}" title="${escapeHtml(t('chatDeleteAction'))}">
+              <svg class="education-quiz-history-action-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z" fill="currentColor"></path>
+                <path d="M7 9h10l-.8 10.2A2 2 0 0 1 14.21 21H9.79a2 2 0 0 1-1.99-1.8L7 9Z" fill="currentColor" opacity="0.92"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="education-quiz-history-card">
+            <div class="education-quiz-history-top">
+              <div class="education-quiz-history-title">${escapeHtml(entry.title || t('educationQuizTitle'))}</div>
+              <div class="education-quiz-history-score">${escapeHtml(t('educationQuizScore', { score: String(entry.score), total: String(entry.total) }))}</div>
+            </div>
+            <div class="education-quiz-history-meta">${escapeHtml(t('educationQuizHistoryMeta', { count: String(entry.total), date: formattedDate }))}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function saveCompletedEducationQuizToHistory() {
+  if (educationQuizPageState.historySaved || !educationQuizPageState.questions.length) return;
+
+  educationQuizHistory.unshift({
+    id: `edu-quiz-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: educationQuizPageState.historyTitle || getEducationQuizHistoryTitle(),
+    score: educationQuizPageState.score,
+    total: educationQuizPageState.questions.length,
+    completedAt: Date.now()
+  });
+  educationQuizHistory = educationQuizHistory.slice(0, 20);
+  educationQuizPageState.historySaved = true;
+  persistEducationQuizHistory();
+  renderEducationQuizHistory();
+}
+
+function restartEducationQuizPage() {
+  if (!educationQuizPageState.questions.length) return;
+  educationQuizPageState.currentQuestionIndex = 0;
+  educationQuizPageState.score = 0;
+  educationQuizPageState.answers = Array.from({ length: educationQuizPageState.questions.length }, () => null);
+  educationQuizPageState.feedback = null;
+  educationQuizPageState.completed = false;
+  educationQuizPageState.historySaved = false;
+  renderEducationQuizPage();
+}
+
+function renderEducationQuizPage() {
+  if (!educationQuizPageBody || !educationQuizPageActions || !educationQuizPageProgress || !educationQuizPageKicker) return;
+
+  educationQuizPageKicker.textContent = t('educationQuizTitle');
+
+  if (!educationQuizPageState.open) {
+    educationQuizPageBody.innerHTML = '';
+    educationQuizPageActions.innerHTML = '';
+    educationQuizPageProgress.textContent = '';
+    return;
+  }
+
+  if (educationQuizPageState.loading) {
+    educationQuizPageProgress.textContent = '';
+    educationQuizPageBody.innerHTML = `
+      <div class="education-quiz-stage loading">
+        <div class="education-quiz-stage-label">${escapeHtml(t('educationQuizTitle'))}</div>
+        <div class="education-quiz-stage-question">${escapeHtml(t('educationQuizLoading'))}</div>
+      </div>
+    `;
+    educationQuizPageActions.innerHTML = '';
+    return;
+  }
+
+  if (educationQuizPageState.error) {
+    educationQuizPageProgress.textContent = '';
+    educationQuizPageBody.innerHTML = `
+      <div class="education-quiz-stage error">
+        <div class="education-quiz-stage-label">${escapeHtml(t('educationQuizTitle'))}</div>
+        <div class="education-quiz-stage-question">${escapeHtml(t('errorServerPrefix') + educationQuizPageState.error)}</div>
+      </div>
+    `;
+    educationQuizPageActions.innerHTML = `
+      <button type="button" class="education-quiz-page-action primary" data-education-quiz-page-action="regenerate">${escapeHtml(t('educationQuizRegenerate'))}</button>
+    `;
+    return;
+  }
+
+  const totalQuestions = educationQuizPageState.questions.length;
+  if (!totalQuestions) {
+    educationQuizPageProgress.textContent = '';
+    educationQuizPageBody.innerHTML = `
+      <div class="education-quiz-stage error">
+        <div class="education-quiz-stage-question">${escapeHtml(t('chatUnknown'))}</div>
+      </div>
+    `;
+    educationQuizPageActions.innerHTML = `
+      <button type="button" class="education-quiz-page-action primary" data-education-quiz-page-action="regenerate">${escapeHtml(t('educationQuizRegenerate'))}</button>
+    `;
+    return;
+  }
+
+  if (educationQuizPageState.completed) {
+    educationQuizPageProgress.textContent = escapeHtml(t('educationQuizCompleted'));
+    educationQuizPageBody.innerHTML = `
+      <div class="education-quiz-stage summary">
+        <div class="education-quiz-stage-label">${escapeHtml(t('educationQuizCompleted'))}</div>
+        <div class="education-quiz-stage-question">${escapeHtml(t('educationQuizScore', { score: String(educationQuizPageState.score), total: String(totalQuestions) }))}</div>
+      </div>
+    `;
+    educationQuizPageActions.innerHTML = `
+      <button type="button" class="education-quiz-page-action secondary" data-education-quiz-page-action="restart">${escapeHtml(t('educationQuizRestartSame'))}</button>
+      <button type="button" class="education-quiz-page-action primary" data-education-quiz-page-action="regenerate">${escapeHtml(t('educationQuizRegenerate'))}</button>
+    `;
+    return;
+  }
+
+  const currentIndex = educationQuizPageState.currentQuestionIndex;
+  const currentQuestion = educationQuizPageState.questions[currentIndex];
+  const feedback = educationQuizPageState.feedback;
+
+  educationQuizPageProgress.textContent = t('educationQuizProgress', {
+    current: String(currentIndex + 1),
+    total: String(totalQuestions)
+  });
+
+  const optionsMarkup = currentQuestion.options.map((option) => {
+    const optionClasses = ['education-quiz-page-option'];
+    if (feedback) {
+      if (option.key === feedback.correctKey) optionClasses.push('correct');
+      else if (option.key === feedback.selectedKey && !feedback.isCorrect) optionClasses.push('incorrect');
+    }
+
+    return `
+      <button type="button" class="${optionClasses.join(' ')}" data-education-quiz-page-option="${escapeHtml(option.key)}" ${feedback ? 'disabled' : ''}>
+        <span class="education-quiz-page-option-key">${escapeHtml(option.key)}</span>
+        <span class="education-quiz-page-option-text">${escapeHtml(option.text)}</span>
+      </button>
+    `;
+  }).join('');
+
+  educationQuizPageBody.innerHTML = `
+    <div class="education-quiz-stage">
+      <div class="education-quiz-stage-label">${escapeHtml(t('educationQuizQuestion', { number: String(currentIndex + 1) }))}</div>
+      <div class="education-quiz-stage-question">${escapeHtml(currentQuestion.prompt)}</div>
+      <div class="education-quiz-page-options">${optionsMarkup}</div>
+      <div class="education-quiz-page-feedback ${feedback ? (feedback.isCorrect ? 'correct' : 'incorrect') : ''}">${feedback ? escapeHtml(feedback.isCorrect ? t('educationQuizCorrect') : t('educationQuizIncorrect')) : ''}</div>
+    </div>
+  `;
+  educationQuizPageActions.innerHTML = `
+    <button type="button" class="education-quiz-page-action secondary" data-education-quiz-page-action="restart">${escapeHtml(t('educationQuizRestartSame'))}</button>
+    <button type="button" class="education-quiz-page-action primary" data-education-quiz-page-action="regenerate">${escapeHtml(t('educationQuizRegenerate'))}</button>
+  `;
+}
+
+function advanceEducationQuizPage() {
+  if (educationQuizPageState.currentQuestionIndex >= educationQuizPageState.questions.length - 1) {
+    educationQuizPageState.completed = true;
+    saveCompletedEducationQuizToHistory();
+  } else {
+    educationQuizPageState.currentQuestionIndex += 1;
+  }
+  educationQuizPageState.feedback = null;
+  renderEducationQuizPage();
+}
+
+function answerEducationQuizPage(optionKey) {
+  if (!educationQuizPageState.open || educationQuizPageState.loading || educationQuizPageState.completed || educationQuizPageState.feedback) return;
+
+  const currentQuestion = educationQuizPageState.questions[educationQuizPageState.currentQuestionIndex];
+  if (!currentQuestion) return;
+
+  const isCorrect = optionKey === currentQuestion.answerKey;
+  educationQuizPageState.answers[educationQuizPageState.currentQuestionIndex] = optionKey;
+  if (isCorrect) {
+    educationQuizPageState.score += 1;
+  }
+  educationQuizPageState.feedback = {
+    selectedKey: optionKey,
+    correctKey: currentQuestion.answerKey,
+    isCorrect
+  };
+  renderEducationQuizPage();
+
+  window.setTimeout(() => {
+    advanceEducationQuizPage();
+  }, 720);
+}
+
+async function requestEducationQuiz({ regenerate = false } = {}) {
+  if (isEducationAgentRequestPending) {
+    showToast(t('educationChatThinking'));
+    return;
+  }
+
+  const studyContext = getEducationStudyContext();
+  if (!studyContext.pastedText && !studyContext.documents.length) {
+    showToast(t('educationNoSource'));
+    return;
+  }
+
+  const questionCount = Number(educationQuizCountSelect?.value || selectedEducationQuizQuestionCount || 0);
+  if (!Number.isFinite(questionCount) || questionCount <= 0) {
+    showToast(t('educationQuizInvalidCount'));
+    return;
+  }
+
+  selectedEducationQuizQuestionCount = questionCount;
+  persistEducationState();
+
+  const prompt = getEducationTaskPrompt();
+  if (!prompt) return;
+
+  educationQuizPageState.loading = true;
+  educationQuizPageState.error = '';
+  educationQuizPageState.questions = [];
+  educationQuizPageState.currentQuestionIndex = 0;
+  educationQuizPageState.score = 0;
+  educationQuizPageState.answers = [];
+  educationQuizPageState.feedback = null;
+  educationQuizPageState.completed = false;
+  educationQuizPageState.lastPrompt = prompt;
+  educationQuizPageState.historySaved = false;
+  educationQuizPageState.historyTitle = getEducationQuizHistoryTitle();
+  openEducationQuizPage();
+  setEducationAgentRequestPending(true);
+
+  try {
+    const res = await fetch(getApiUrl('/api/chat'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(getEducationAgentRequestPayload(prompt))
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.reply || `${res.status} ${res.statusText}`.trim());
+    }
+
+    const reply = data.reply || t('chatUnknown');
+    const quizData = parseEducationQuiz(reply);
+    if (!quizData || !quizData.questions.length) {
+      throw new Error(t('chatUnknown'));
+    }
+
+    const questions = quizData.questions.slice(0, questionCount);
+    educationQuizPageState.loading = false;
+    educationQuizPageState.questions = questions;
+    educationQuizPageState.currentQuestionIndex = 0;
+    educationQuizPageState.score = 0;
+    educationQuizPageState.answers = Array.from({ length: questions.length }, () => null);
+    educationQuizPageState.feedback = null;
+    educationQuizPageState.completed = false;
+
+    renderEducationQuizPage();
+  } catch (error) {
+    console.error('Education quiz generation error:', error);
+    educationQuizPageState.loading = false;
+    educationQuizPageState.error = error.message || t('chatUnknown');
+    renderEducationQuizPage();
+  } finally {
+    setEducationAgentRequestPending(false);
+    if (educationPanelLabel) educationPanelLabel.textContent = t('educationChatIdle');
+  }
+}
+
+function getEducationQuizState(messageIndex, quizData) {
+  const expectedQuestions = quizData?.questions?.length || 0;
+  const currentState = educationQuizUiState[messageIndex];
+
+  if (!currentState || currentState.selectedAnswers.length !== expectedQuestions) {
+    educationQuizUiState[messageIndex] = {
+      selectedAnswers: Array.from({ length: expectedQuestions }, () => ''),
+      submitted: false
+    };
+  }
+
+  return educationQuizUiState[messageIndex];
+}
+
+function getEducationQuizScore(quizData, quizState) {
+  return quizData.questions.reduce((score, question, index) => {
+    return score + (quizState.selectedAnswers[index] === question.answerKey ? 1 : 0);
+  }, 0);
+}
+
+function renderEducationQuizMessage(quizData, messageIndex) {
+  const quizState = getEducationQuizState(messageIndex, quizData);
+  const score = quizState.submitted ? getEducationQuizScore(quizData, quizState) : 0;
+
+  const questionsMarkup = quizData.questions.map((question, questionIndex) => {
+    const selectedAnswer = quizState.selectedAnswers[questionIndex] || '';
+    const isCorrect = quizState.submitted && selectedAnswer === question.answerKey;
+    const isIncorrect = quizState.submitted && selectedAnswer && selectedAnswer !== question.answerKey;
+
+    const optionsMarkup = question.options.map((option) => {
+      const selected = selectedAnswer === option.key;
+      const revealCorrect = quizState.submitted && option.key === question.answerKey;
+      const revealIncorrect = quizState.submitted && selected && option.key !== question.answerKey;
+      const optionClasses = [
+        'education-quiz-option',
+        selected ? 'selected' : '',
+        revealCorrect ? 'correct' : '',
+        revealIncorrect ? 'incorrect' : ''
+      ].filter(Boolean).join(' ');
+
+      return `
+        <button
+          type="button"
+          class="${optionClasses}"
+          data-education-quiz-option="true"
+          data-education-quiz-message-index="${messageIndex}"
+          data-education-quiz-question-index="${questionIndex}"
+          data-education-quiz-option-key="${escapeHtml(option.key)}"
+          ${quizState.submitted ? 'disabled' : ''}
+        >
+          <span class="education-quiz-option-key">${escapeHtml(option.key)}</span>
+          <span class="education-quiz-option-text">${escapeHtml(option.text)}</span>
+        </button>
+      `;
+    }).join('');
+
+    return `
+      <section class="education-quiz-question-card ${quizState.submitted ? (isCorrect ? 'is-correct' : 'is-incorrect') : ''}">
+        <div class="education-quiz-question-label">${escapeHtml(t('educationQuizQuestion', { number: String(questionIndex + 1) }))}</div>
+        <div class="education-quiz-question-text">${escapeHtml(question.prompt)}</div>
+        <div class="education-quiz-options">${optionsMarkup}</div>
+        ${quizState.submitted ? `
+          <div class="education-quiz-feedback ${isCorrect ? 'correct' : 'incorrect'}">${escapeHtml(isCorrect ? t('educationQuizCorrect') : t('educationQuizIncorrect'))}</div>
+          <div class="education-quiz-explanation">${escapeHtml(question.explanation || '')}</div>
+        ` : ''}
+      </section>
+    `;
+  }).join('');
+
+  return `
+    <div class="education-quiz-card">
+      <div class="education-quiz-head">
+        <div class="education-quiz-title">${escapeHtml(t('educationQuizTitle'))}</div>
+        ${quizState.submitted ? `<div class="education-quiz-score">${escapeHtml(t('educationQuizScore', { score: String(score), total: String(quizData.questions.length) }))}</div>` : ''}
+      </div>
+      <div class="education-quiz-body">${questionsMarkup}</div>
+      <div class="education-quiz-actions">
+        ${quizState.submitted
+          ? `<button type="button" class="education-quiz-action secondary" data-education-quiz-reset="true" data-education-quiz-message-index="${messageIndex}">${escapeHtml(t('educationQuizRetry'))}</button>`
+          : `<button type="button" class="education-quiz-action primary" data-education-quiz-submit="true" data-education-quiz-message-index="${messageIndex}">${escapeHtml(t('educationQuizCheck'))}</button>`}
+      </div>
+    </div>
+  `;
+}
+
+function selectEducationQuizOption(messageIndex, questionIndex, optionKey) {
+  const message = educationChatHistory[messageIndex];
+  const quizData = parseEducationQuiz(message?.text || '');
+  if (!quizData) return;
+
+  const quizState = getEducationQuizState(messageIndex, quizData);
+  if (quizState.submitted) return;
+
+  quizState.selectedAnswers[questionIndex] = optionKey;
+  renderEducationChatHistory({ preserveScroll: true });
+}
+
+function submitEducationQuiz(messageIndex) {
+  const message = educationChatHistory[messageIndex];
+  const quizData = parseEducationQuiz(message?.text || '');
+  if (!quizData) return;
+
+  const quizState = getEducationQuizState(messageIndex, quizData);
+  const hasUnanswered = quizState.selectedAnswers.some(answer => !answer);
+  if (hasUnanswered) {
+    showToast(t('educationQuizIncomplete'));
+    return;
+  }
+
+  quizState.submitted = true;
+  renderEducationChatHistory({ preserveScroll: true });
+}
+
+function resetEducationQuiz(messageIndex) {
+  const message = educationChatHistory[messageIndex];
+  const quizData = parseEducationQuiz(message?.text || '');
+  if (!quizData) return;
+
+  educationQuizUiState[messageIndex] = {
+    selectedAnswers: Array.from({ length: quizData.questions.length }, () => ''),
+    submitted: false
+  };
+  renderEducationChatHistory({ preserveScroll: true });
+}
+
 function updateEducationDownloadButtonState() {
   if (!educationDownloadLatestBtn) return;
+  if (selectedEducationAction === 'quiz') {
+    educationDownloadLatestBtn.disabled = true;
+    return;
+  }
   educationDownloadLatestBtn.disabled = getLatestEducationMiloMessageIndex() === -1;
 }
 
@@ -3051,8 +3934,10 @@ function downloadLatestEducationResponsePdf() {
   downloadEducationMessagePdf(latestMessageIndex);
 }
 
-function renderEducationChatHistory() {
+function renderEducationChatHistory(options = {}) {
+  const { preserveScroll = false } = options;
   if (!educationChatHistoryEl) return;
+  const previousScrollTop = educationChatHistoryEl.scrollTop;
   if (educationChatHistory.length === 0) {
     educationChatHistoryEl.innerHTML = `<div class="chat-empty">${t('educationChatEmpty')}</div>`;
     updateEducationDownloadButtonState();
@@ -3061,24 +3946,27 @@ function renderEducationChatHistory() {
 
   educationChatHistoryEl.innerHTML = educationChatHistory.map((msg, index) => {
     if (msg.role === 'milo') {
+      const quizData = parseEducationQuiz(msg.text);
       return `
         <div class="education-message-card milo">
-          <div class="chat-bubble milo education-rich-message">${formatEducationMessage(msg.text)}</div>
-          <button type="button" class="education-download-btn" data-download-education-message-index="${index}" title="${escapeHtml(t('educationDownloadPdf'))}" aria-label="${escapeHtml(t('educationDownloadPdf'))}">
+          ${quizData
+            ? renderEducationQuizMessage(quizData, index)
+            : `<div class="chat-bubble milo education-rich-message">${formatEducationMessage(msg.text)}</div>`}
+          ${quizData ? '' : `<button type="button" class="education-download-btn" data-download-education-message-index="${index}" title="${escapeHtml(t('educationDownloadPdf'))}" aria-label="${escapeHtml(t('educationDownloadPdf'))}">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 1.5v5.5"/>
               <path d="M3.8 5.2L6 7.5l2.2-2.3"/>
               <path d="M2 9.5h8"/>
             </svg>
             <span>${escapeHtml(t('educationDownloadPdf'))}</span>
-          </button>
+          </button>`}
         </div>
       `;
     }
 
     return `<div class="education-message-card user"><div class="chat-bubble user">${escapeHtml(msg.text)}</div></div>`;
   }).join('');
-  educationChatHistoryEl.scrollTop = educationChatHistoryEl.scrollHeight;
+  educationChatHistoryEl.scrollTop = preserveScroll ? previousScrollTop : educationChatHistoryEl.scrollHeight;
   updateEducationDownloadButtonState();
 }
 
@@ -3105,12 +3993,16 @@ function setEducationAgentRequestPending(pending) {
   if (educationInstructionsInput) educationInstructionsInput.disabled = pending;
   if (educationSourceTextArea) educationSourceTextArea.disabled = pending;
   if (educationSheetLengthSelect) educationSheetLengthSelect.disabled = pending;
+  if (educationQuizCountSelect) educationQuizCountSelect.disabled = pending;
   educationActionButtons.forEach((button) => {
     button.disabled = pending;
   });
 }
 
 function setEducationAction(action) {
+  if (selectedEducationAction === 'quiz' && action !== 'quiz') {
+    closeEducationQuizPage();
+  }
   selectedEducationAction = action;
   renderEducationComposerState();
   persistEducationState();
@@ -3125,9 +4017,23 @@ function renderEducationComposerState() {
     educationSheetLengthWrap.style.display = selectedEducationAction === 'sheet' ? 'flex' : 'none';
   }
 
+  if (educationQuizCountWrap) {
+    educationQuizCountWrap.style.display = selectedEducationAction === 'quiz' ? 'flex' : 'none';
+  }
+
   if (educationSheetLengthSelect) {
     educationSheetLengthSelect.value = selectedEducationSheetLength;
   }
+
+  if (educationQuizCountSelect) {
+    educationQuizCountSelect.value = String(selectedEducationQuizQuestionCount);
+  }
+
+  if (educationDownloadLatestBtn) {
+    educationDownloadLatestBtn.style.display = selectedEducationAction === 'quiz' ? 'none' : 'block';
+  }
+
+  renderEducationQuizHistory();
 }
 
 function loadEducationState() {
@@ -3166,6 +4072,13 @@ function loadEducationState() {
     }
   } catch {}
 
+  try {
+    const rawQuizCount = Number(window.localStorage.getItem('milo.educationQuizQuestionCount'));
+    if (Number.isFinite(rawQuizCount) && rawQuizCount >= 0 && rawQuizCount <= 10) {
+      selectedEducationQuizQuestionCount = rawQuizCount;
+    }
+  } catch {}
+
   selectedEducationDocumentId = educationDocuments[0]?.id || null;
   setEducationUploadPanelOpen(educationDocuments.length > 0);
 }
@@ -3176,6 +4089,7 @@ function persistEducationState() {
   window.localStorage.setItem('milo.educationInstructions', educationInstructionsInput?.value || '');
   window.localStorage.setItem('milo.educationAction', selectedEducationAction);
   window.localStorage.setItem('milo.educationSheetLength', selectedEducationSheetLength);
+  window.localStorage.setItem('milo.educationQuizQuestionCount', String(selectedEducationQuizQuestionCount));
 }
 
 function renderDocumentsList() {
@@ -3290,6 +4204,12 @@ function clearEducationSourceText() {
 function getEducationTaskPrompt() {
   const extraInstructions = educationInstructionsInput?.value.trim() || '';
   let basePrompt = '';
+  const quizQuestionCount = Math.max(1, Number(selectedEducationQuizQuestionCount || 5));
+  const quizFormatInstruction = currentLanguage === 'en'
+    ? ` Return only a multiple-choice quiz in this exact format, with no intro or outro: Q1: question on one line, then A) option, B) option, C) option, D) option, then ANSWER: letter, then EXPLANATION: short explanation. Repeat for ${quizQuestionCount} questions.`
+    : currentLanguage === 'es'
+      ? ` Devuelve solo un quiz de opcion multiple con este formato exacto, sin introduccion ni conclusion: Q1: pregunta en una linea, luego A) opcion, B) opcion, C) opcion, D) opcion, luego ANSWER: letra, luego EXPLANATION: explicacion breve. Repite para ${quizQuestionCount} preguntas.`
+      : ` Renvoie uniquement un quiz a choix multiple avec ce format exact, sans introduction ni conclusion : Q1: question sur une ligne, puis A) option, B) option, C) option, D) option, puis ANSWER: lettre, puis EXPLANATION: explication courte. Repete pour ${quizQuestionCount} questions.`;
 
   if (currentLanguage === 'en') {
     if (selectedEducationAction === 'explain') {
@@ -3300,7 +4220,7 @@ function getEducationTaskPrompt() {
       const lengthLabel = selectedEducationSheetLength === 'short' ? 'short' : selectedEducationSheetLength === 'long' ? 'long' : 'medium';
       basePrompt = `Create a ${lengthLabel} study sheet from this text or document.`;
     } else {
-      basePrompt = 'Create a quiz based on this text or document, with the answers listed below the questions.';
+      basePrompt = `Create a quiz based on this text or document.${quizFormatInstruction}`;
     }
   } else if (currentLanguage === 'es') {
     if (selectedEducationAction === 'explain') {
@@ -3311,7 +4231,7 @@ function getEducationTaskPrompt() {
       const lengthLabel = selectedEducationSheetLength === 'short' ? 'corta' : selectedEducationSheetLength === 'long' ? 'larga' : 'media';
       basePrompt = `Crea una ficha de revision ${lengthLabel} a partir de este texto o documento.`;
     } else {
-      basePrompt = 'Crea un quiz a partir de este texto o documento, con las respuestas debajo de las preguntas.';
+      basePrompt = `Crea un quiz a partir de este texto o documento.${quizFormatInstruction}`;
     }
   } else {
     if (selectedEducationAction === 'explain') {
@@ -3322,7 +4242,7 @@ function getEducationTaskPrompt() {
       const lengthLabel = selectedEducationSheetLength === 'short' ? 'courte' : selectedEducationSheetLength === 'long' ? 'longue' : 'moyenne';
       basePrompt = `Crée une fiche de révision ${lengthLabel} à partir de ce texte ou document.`;
     } else {
-      basePrompt = 'Crée un quiz à partir de ce texte ou document, avec les réponses plus bas.';
+      basePrompt = `Crée un quiz à partir de ce texte ou document.${quizFormatInstruction}`;
     }
   }
 
@@ -3351,6 +4271,11 @@ function getEducationTaskSignature() {
 function runEducationTask() {
   if (isEducationAgentRequestPending) {
     showToast(t('educationChatThinking'));
+    return;
+  }
+
+  if (selectedEducationAction === 'quiz') {
+    requestEducationQuiz();
     return;
   }
 
