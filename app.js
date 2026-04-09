@@ -247,8 +247,26 @@
         homeCard4Sub: '19h00 · 1h',
         homeCard4Badge: 'Planifié par Milo',
         progressTitle: 'Progress',
+        progressLevelKicker: 'Niveau Milo',
         progressSection: 'Tâches terminées',
         progressEmpty: 'Aucune tâche terminée pour le moment.',
+        progressTasksOnly: 'Cette progression suit les tâches accomplies avec Milo, avec un plafond de points par jour.',
+        progressLevelLabel: 'Niveau {level}',
+        progressLevelMax: 'Niveau max',
+        progressPointsDone: '{count} points gagnés',
+        progressActiveDays: '{count} jours actifs',
+        progressActiveDaySingle: '{count} jour actif',
+        progressDailyCap: '{count} tâches max/jour',
+        progressDailyCapHint: 'Seules les {count} premières tâches validées chaque jour font progresser le niveau.',
+        progressNextLevel: 'Encore {count} points pour atteindre {title}.',
+        progressMaxLevelReached: 'Niveau max atteint. Continue à cocher des tâches pour faire grandir ton historique avec Milo.',
+        progressLevelSpark: 'Étincelle',
+        progressLevelMomentum: 'Élan',
+        progressLevelOrbit: 'Cap',
+        progressLevelRise: 'Ascension',
+        progressLevelFocus: 'Maîtrise',
+        progressLevelPulse: 'Impulsion',
+        progressLevelLegend: 'Légende',
         profileTitle: 'Profil',
         profileHeroTitle: 'Ton espace personnel',
         profileHeroSubtitle: 'Retrouve ici les informations principales de ton profil dans une vraie page dédiée, comme pour Éducation.',
@@ -483,8 +501,26 @@
         homeCard4Sub: '7:00 PM · 1h',
         homeCard4Badge: 'Planned by Milo',
         progressTitle: 'Progress',
+        progressLevelKicker: 'Milo level',
         progressSection: 'Completed tasks',
         progressEmpty: 'No completed task yet.',
+        progressTasksOnly: 'This progression follows the tasks you complete with Milo, with a daily points cap.',
+        progressLevelLabel: 'Level {level}',
+        progressLevelMax: 'Max level',
+        progressPointsDone: '{count} points earned',
+        progressActiveDays: '{count} active days',
+        progressActiveDaySingle: '{count} active day',
+        progressDailyCap: '{count} tasks max/day',
+        progressDailyCapHint: 'Only the first {count} completed tasks each day increase your level.',
+        progressNextLevel: '{count} more points to reach {title}.',
+        progressMaxLevelReached: 'Max level reached. Keep completing tasks to grow your history with Milo.',
+        progressLevelSpark: 'Spark',
+        progressLevelMomentum: 'Momentum',
+        progressLevelOrbit: 'Course',
+        progressLevelRise: 'Rise',
+        progressLevelFocus: 'Mastery',
+        progressLevelPulse: 'Pulse',
+        progressLevelLegend: 'Legend',
         profileTitle: 'Profile',
         profileHeroTitle: 'Your personal space',
         profileHeroSubtitle: 'Find your main profile information here in a full dedicated page, just like Education.',
@@ -719,8 +755,26 @@
         homeCard4Sub: '19:00 · 1 h',
         homeCard4Badge: 'Planificado por Milo',
         progressTitle: 'Progreso',
+        progressLevelKicker: 'Nivel Milo',
         progressSection: 'Tareas completadas',
         progressEmpty: 'Todavia no hay tareas completadas.',
+        progressTasksOnly: 'Esta progresion sigue las tareas completadas con Milo, con un limite de puntos por dia.',
+        progressLevelLabel: 'Nivel {level}',
+        progressLevelMax: 'Nivel maximo',
+        progressPointsDone: '{count} puntos ganados',
+        progressActiveDays: '{count} dias activos',
+        progressActiveDaySingle: '{count} dia activo',
+        progressDailyCap: '{count} tareas max/dia',
+        progressDailyCapHint: 'Solo las primeras {count} tareas completadas cada dia hacen subir el nivel.',
+        progressNextLevel: 'Te faltan {count} puntos para alcanzar {title}.',
+        progressMaxLevelReached: 'Nivel maximo alcanzado. Sigue completando tareas para ampliar tu historial con Milo.',
+        progressLevelSpark: 'Chispa',
+        progressLevelMomentum: 'Impulso',
+        progressLevelOrbit: 'Rumbo',
+        progressLevelRise: 'Ascenso',
+        progressLevelFocus: 'Dominio',
+        progressLevelPulse: 'Pulso',
+        progressLevelLegend: 'Leyenda',
         profileTitle: 'Perfil',
         profileHeroTitle: 'Tu espacio personal',
         profileHeroSubtitle: 'Encuentra aqui la informacion principal de tu perfil en una pagina dedicada, igual que Educacion.',
@@ -1309,6 +1363,7 @@ function applyTranslations() {
   setText('home-card-4-sub', 'homeCard4Sub');
   setText('home-card-4-badge', 'homeCard4Badge');
   setText('progress-page-title', 'progressTitle');
+  setText('progress-level-kicker', 'progressLevelKicker');
   setText('progress-section-label', 'progressSection');
   setText('profile-page-title', 'profileTitle');
   setText('profile-hero-title', 'profileHeroTitle');
@@ -5829,6 +5884,173 @@ function initializePlanningInteractions() {
   });
 }
 
+function getProgressLevelDefinitions() {
+  return [
+    { minCompleted: 0, titleKey: 'progressLevelSpark' },
+    { minCompleted: 3, titleKey: 'progressLevelMomentum' },
+    { minCompleted: 7, titleKey: 'progressLevelOrbit' },
+    { minCompleted: 12, titleKey: 'progressLevelRise' },
+    { minCompleted: 18, titleKey: 'progressLevelFocus' },
+    { minCompleted: 27, titleKey: 'progressLevelPulse' },
+    { minCompleted: 40, titleKey: 'progressLevelLegend' }
+  ];
+}
+
+function getProgressDailyPointsCap() {
+  return 5;
+}
+
+function getProgressPointsSummary(completedEvents) {
+  const eventsByDay = new Map();
+  const dailyPointsCap = getProgressDailyPointsCap();
+
+  completedEvents.forEach((event) => {
+    const completedDate = new Date(event?.completedAt);
+    if (Number.isNaN(completedDate.getTime())) return;
+
+    const dayKey = completedDate.toISOString().slice(0, 10);
+    const existingEvents = eventsByDay.get(dayKey) || [];
+    existingEvents.push(event);
+    eventsByDay.set(dayKey, existingEvents);
+  });
+
+  let earnedPoints = 0;
+  let cappedDaysCount = 0;
+
+  eventsByDay.forEach((events) => {
+    const validCount = events.length;
+    earnedPoints += Math.min(validCount, dailyPointsCap);
+    if (validCount > dailyPointsCap) {
+      cappedDaysCount += 1;
+    }
+  });
+
+  return {
+    earnedPoints,
+    cappedDaysCount
+  };
+}
+
+function getProgressActiveDayCount(completedEvents) {
+  const sortedUniqueDays = [...new Set(completedEvents
+    .map((event) => {
+      const completedDate = new Date(event?.completedAt);
+      if (Number.isNaN(completedDate.getTime())) return '';
+      return completedDate.toISOString().slice(0, 10);
+    })
+    .filter(Boolean))]
+    .sort((left, right) => (left < right ? 1 : -1));
+
+  if (!sortedUniqueDays.length) return 0;
+
+  let streak = 1;
+  for (let index = 1; index < sortedUniqueDays.length; index += 1) {
+    const previousDate = new Date(`${sortedUniqueDays[index - 1]}T12:00:00`);
+    const currentDate = new Date(`${sortedUniqueDays[index]}T12:00:00`);
+    const deltaDays = Math.round((previousDate.getTime() - currentDate.getTime()) / 86400000);
+    if (deltaDays !== 1) break;
+    streak += 1;
+  }
+
+  return streak;
+}
+
+function getProgressLevelState(completedCount) {
+  const progressLevelDefinitions = getProgressLevelDefinitions();
+  let currentIndex = 0;
+
+  for (let index = 0; index < progressLevelDefinitions.length; index += 1) {
+    if (completedCount >= progressLevelDefinitions[index].minCompleted) {
+      currentIndex = index;
+    }
+  }
+
+  const currentLevel = progressLevelDefinitions[currentIndex];
+  const nextLevel = progressLevelDefinitions[currentIndex + 1] || null;
+  const currentLevelNumber = currentIndex + 1;
+
+  if (!nextLevel) {
+    return {
+      currentLevel,
+      nextLevel: null,
+      currentLevelNumber,
+      progressPercent: 100,
+      tasksToNext: 0
+    };
+  }
+
+  const completedWithinLevel = Math.max(0, completedCount - currentLevel.minCompleted);
+  const levelRange = Math.max(1, nextLevel.minCompleted - currentLevel.minCompleted);
+
+  return {
+    currentLevel,
+    nextLevel,
+    currentLevelNumber,
+    progressPercent: Math.max(0, Math.min(100, (completedWithinLevel / levelRange) * 100)),
+    tasksToNext: Math.max(0, nextLevel.minCompleted - completedCount)
+  };
+}
+
+function renderProgressHero(completedEvents) {
+  const levelName = document.getElementById('progress-level-name');
+  const levelSub = document.getElementById('progress-level-sub');
+  const levelBadge = document.getElementById('progress-level-badge');
+  const levelFill = document.getElementById('progress-level-fill');
+  const levelCurrent = document.getElementById('progress-level-current');
+  const levelNext = document.getElementById('progress-level-next');
+  const totalPill = document.getElementById('progress-level-total-pill');
+  const streakPill = document.getElementById('progress-level-streak-pill');
+  const levelNote = document.getElementById('progress-level-note');
+  if (!levelName || !levelSub || !levelBadge || !levelFill || !levelCurrent || !levelNext || !totalPill || !streakPill || !levelNote) return;
+
+  const completedCount = completedEvents.length;
+  const dailyPointsCap = getProgressDailyPointsCap();
+  const pointsSummary = getProgressPointsSummary(completedEvents);
+  const activeDayCount = getProgressActiveDayCount(completedEvents);
+  const progressState = getProgressLevelState(pointsSummary.earnedPoints);
+  const currentLevelTitle = t(progressState.currentLevel.titleKey);
+  const nextLevelTitle = progressState.nextLevel ? t(progressState.nextLevel.titleKey) : t('progressLevelMax');
+  const activeDaysLabel = activeDayCount === 1
+    ? t('progressActiveDaySingle', { count: String(activeDayCount) })
+    : t('progressActiveDays', { count: String(activeDayCount) });
+
+  levelName.textContent = `${t('progressLevelLabel', { level: String(progressState.currentLevelNumber) })} · ${currentLevelTitle}`;
+  levelSub.textContent = `${t('progressTasksOnly')} ${activeDaysLabel}.`;
+  levelBadge.textContent = `Lv. ${progressState.currentLevelNumber}`;
+  levelFill.style.width = `${progressState.progressPercent}%`;
+  levelCurrent.textContent = currentLevelTitle;
+  levelNext.textContent = nextLevelTitle;
+  totalPill.textContent = t('progressPointsDone', { count: String(pointsSummary.earnedPoints) });
+  streakPill.textContent = t('progressDailyCap', { count: String(dailyPointsCap) });
+  levelNote.textContent = progressState.nextLevel
+    ? `${t('progressNextLevel', { count: String(progressState.tasksToNext), title: nextLevelTitle })} ${t('progressDailyCapHint', { count: String(dailyPointsCap) })}`
+    : `${t('progressMaxLevelReached')} ${t('progressDailyCapHint', { count: String(dailyPointsCap) })}`;
+}
+
+function renderProgressHeroFallback() {
+  const levelName = document.getElementById('progress-level-name');
+  const levelSub = document.getElementById('progress-level-sub');
+  const levelBadge = document.getElementById('progress-level-badge');
+  const levelFill = document.getElementById('progress-level-fill');
+  const levelCurrent = document.getElementById('progress-level-current');
+  const levelNext = document.getElementById('progress-level-next');
+  const totalPill = document.getElementById('progress-level-total-pill');
+  const streakPill = document.getElementById('progress-level-streak-pill');
+  const levelNote = document.getElementById('progress-level-note');
+  if (!levelName || !levelSub || !levelBadge || !levelFill || !levelCurrent || !levelNext || !totalPill || !streakPill || !levelNote) return;
+  const dailyPointsCap = getProgressDailyPointsCap();
+
+  levelName.textContent = `${t('progressLevelLabel', { level: '1' })} · ${t('progressLevelSpark')}`;
+  levelSub.textContent = t('progressTasksOnly');
+  levelBadge.textContent = 'Lv. 1';
+  levelFill.style.width = '0%';
+  levelCurrent.textContent = t('progressLevelSpark');
+  levelNext.textContent = t('progressLevelMomentum');
+  totalPill.textContent = t('progressPointsDone', { count: '0' });
+  streakPill.textContent = t('progressDailyCap', { count: String(dailyPointsCap) });
+  levelNote.textContent = t('progressDailyCapHint', { count: String(dailyPointsCap) });
+}
+
 function initializeProgressInteractions() {
   const progressList = document.getElementById('progress-completed-list');
   const progressModalBackdrop = document.getElementById('progress-task-modal-backdrop');
@@ -5864,19 +6086,29 @@ function renderProgressPage() {
   const progressList = document.getElementById('progress-completed-list');
   if (!progressList) return;
 
-  initializeProgressInteractions();
+  try {
+    initializeProgressInteractions();
 
-  const completedEvents = getCompletedPlanningEvents()
-    .sort((left, right) => right.completedAt - left.completedAt);
+    const completedEvents = getCompletedPlanningEvents()
+      .filter((event) => event && typeof event === 'object')
+      .sort((left, right) => right.completedAt - left.completedAt);
 
-  if (!completedEvents.length) {
+    renderProgressHero(completedEvents);
+
+    if (!completedEvents.length) {
+      progressList.innerHTML = `<div class="agenda-empty progress-empty">${escapeHtml(t('progressEmpty'))}</div>`;
+      renderProgressTaskModal();
+      return;
+    }
+
+    progressList.innerHTML = completedEvents.map((event) => (`<div class="progress-event-card"><button type="button" class="progress-event-open" data-progress-open-id="${event.id}"><div class="progress-event-main"><div class="agenda-event-time">${escapeHtml(formatTaskDateLabel(event.date, event.time))}</div><div class="agenda-name">${escapeHtml(event.title || t('untitledTask'))}</div></div></button><button type="button" class="agenda-event-check checked" data-restore-event-id="${event.id}" aria-label="${escapeHtml(t('taskUncompleteAria'))}"></button></div>`)).join('');
+    renderProgressTaskModal();
+  } catch (error) {
+    console.error('Progress render error:', error);
+    renderProgressHeroFallback();
     progressList.innerHTML = `<div class="agenda-empty progress-empty">${escapeHtml(t('progressEmpty'))}</div>`;
     renderProgressTaskModal();
-    return;
   }
-
-  progressList.innerHTML = completedEvents.map((event) => (`<div class="progress-event-card"><button type="button" class="progress-event-open" data-progress-open-id="${event.id}"><div class="progress-event-main"><div class="agenda-event-time">${escapeHtml(formatTaskDateLabel(event.date, event.time))}</div><div class="agenda-name">${escapeHtml(event.title || t('untitledTask'))}</div></div></button><button type="button" class="agenda-event-check checked" data-restore-event-id="${event.id}" aria-label="${escapeHtml(t('taskUncompleteAria'))}"></button></div>`)).join('');
-  renderProgressTaskModal();
 }
 
 function formatLongDate(date) {
